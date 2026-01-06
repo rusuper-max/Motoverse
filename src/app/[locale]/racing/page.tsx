@@ -110,9 +110,9 @@ const RaceCard = ({ race, onClick }: { race: Race; onClick: (race: Race) => void
         <div className="h-20 flex items-center justify-center">
             {hasTrackSvg(race.id) ? (
                 <img
-                    src={`/tracks/${race.id}.svg`}
+                    src={`/tracks/${race.id}.png`}
                     alt={race.circuit}
-                    className="h-16 w-auto opacity-60 group-hover:opacity-100 transition-opacity invert"
+                    className="h-16 w-auto opacity-60 group-hover:opacity-100 transition-opacity"
                 />
             ) : (
                 <span className="text-5xl group-hover:scale-110 transition-transform">{race.flag}</span>
@@ -141,9 +141,9 @@ const DetailModal = ({ race, onClose }: { race: Race; onClose: () => void }) => 
                 <div className="w-full md:w-1/2 bg-gradient-to-br from-zinc-900 to-zinc-800 p-8 flex flex-col items-center justify-center relative border-b md:border-b-0 md:border-r border-zinc-700">
                     {hasTrackSvg(race.id) ? (
                         <img
-                            src={`/tracks/${race.id}.svg`}
+                            src={`/tracks/${race.id}.png`}
                             alt={race.circuit}
-                            className="w-64 h-64 object-contain invert opacity-90"
+                            className="w-64 h-64 object-contain opacity-90"
                         />
                     ) : (
                         <span className="text-9xl">{race.flag}</span>
