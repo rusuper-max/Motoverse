@@ -1,0 +1,139 @@
+// BMW car data - models, generations, and engines
+import { BrandGenerations } from '../types'
+
+// Models available for BMW
+export const bmwModels = [
+    '1 Series', '2 Series', '3 Series', '4 Series', '5 Series', '6 Series', '7 Series', '8 Series',
+    'X1', 'X3', 'X5', 'X6', 'X7',
+    'Z4', 'M3', 'M4', 'M5',
+    'i4', 'iX'
+]
+
+// Generations with real chassis codes as displayName
+export const bmwGenerations: BrandGenerations = {
+    '3 Series': [
+        {
+            name: 'E90',
+            displayName: 'E90/E91/E92/E93 (2005-2013)',
+            startYear: 2005,
+            endYear: 2013,
+            bodyType: 'sedan',
+            engines: [
+                { name: '318i', displacement: '2.0L', fuelType: 'petrol', horsepower: 143, torque: 190, transmission: 'manual', drivetrain: 'rwd' },
+                { name: '320i', displacement: '2.0L', fuelType: 'petrol', horsepower: 170, torque: 210, transmission: 'manual', drivetrain: 'rwd' },
+                { name: '325i', displacement: '2.5L', fuelType: 'petrol', horsepower: 218, torque: 250, transmission: 'manual', drivetrain: 'rwd' },
+                { name: '330i', displacement: '3.0L', fuelType: 'petrol', horsepower: 272, torque: 320, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '335i', displacement: '3.0L', fuelType: 'petrol', horsepower: 306, torque: 400, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: 'M3', displacement: '4.0L', fuelType: 'petrol', horsepower: 420, torque: 400, transmission: 'dct', drivetrain: 'rwd' },
+                { name: '318d', displacement: '2.0L', fuelType: 'diesel', horsepower: 143, torque: 300, transmission: 'manual', drivetrain: 'rwd' },
+                { name: '320d', displacement: '2.0L', fuelType: 'diesel', horsepower: 184, torque: 380, transmission: 'automatic', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'F30',
+            displayName: 'F30/F31/F34 (2011-2019)',
+            startYear: 2011,
+            endYear: 2019,
+            bodyType: 'sedan',
+            engines: [
+                { name: '316i', displacement: '1.6L', fuelType: 'petrol', horsepower: 136, torque: 220, transmission: 'manual', drivetrain: 'rwd' },
+                { name: '320i', displacement: '2.0L', fuelType: 'petrol', horsepower: 184, torque: 270, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '328i', displacement: '2.0L', fuelType: 'petrol', horsepower: 245, torque: 350, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '335i', displacement: '3.0L', fuelType: 'petrol', horsepower: 306, torque: 400, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '340i', displacement: '3.0L', fuelType: 'petrol', horsepower: 326, torque: 450, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '318d', displacement: '2.0L', fuelType: 'diesel', horsepower: 150, torque: 320, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '320d', displacement: '2.0L', fuelType: 'diesel', horsepower: 190, torque: 400, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '330d', displacement: '3.0L', fuelType: 'diesel', horsepower: 258, torque: 560, transmission: 'automatic', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'G20',
+            displayName: 'G20/G21 (2018-present)',
+            startYear: 2018,
+            endYear: undefined,
+            bodyType: 'sedan',
+            engines: [
+                { name: '318i', displacement: '2.0L', fuelType: 'petrol', horsepower: 156, torque: 250, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '320i', displacement: '2.0L', fuelType: 'petrol', horsepower: 184, torque: 300, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '330i', displacement: '2.0L', fuelType: 'petrol', horsepower: 258, torque: 400, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: 'M340i', displacement: '3.0L', fuelType: 'petrol', horsepower: 374, torque: 500, transmission: 'automatic', drivetrain: 'awd' },
+                { name: '318d', displacement: '2.0L', fuelType: 'diesel', horsepower: 150, torque: 350, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '320d', displacement: '2.0L', fuelType: 'diesel', horsepower: 190, torque: 400, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '330d', displacement: '3.0L', fuelType: 'diesel', horsepower: 286, torque: 650, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: '330e', displacement: '2.0L', fuelType: 'hybrid', horsepower: 292, torque: 420, transmission: 'automatic', drivetrain: 'rwd' },
+            ],
+        },
+    ],
+    'M3': [
+        {
+            name: 'E30',
+            displayName: 'E30 (1986-1991)',
+            startYear: 1986,
+            endYear: 1991,
+            bodyType: 'coupe',
+            engines: [
+                { name: 'S14 2.3', displacement: '2.3L', fuelType: 'petrol', horsepower: 200, torque: 240, transmission: 'manual', drivetrain: 'rwd' },
+                { name: 'S14 2.5 Evo', displacement: '2.5L', fuelType: 'petrol', horsepower: 238, torque: 245, transmission: 'manual', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'E36',
+            displayName: 'E36 (1992-1999)',
+            startYear: 1992,
+            endYear: 1999,
+            bodyType: 'coupe',
+            engines: [
+                { name: 'S50B30', displacement: '3.0L', fuelType: 'petrol', horsepower: 286, torque: 320, transmission: 'manual', drivetrain: 'rwd' },
+                { name: 'S50B32', displacement: '3.2L', fuelType: 'petrol', horsepower: 321, torque: 350, transmission: 'manual', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'E46',
+            displayName: 'E46 (2000-2006)',
+            startYear: 2000,
+            endYear: 2006,
+            bodyType: 'coupe',
+            engines: [
+                { name: 'S54B32', displacement: '3.2L', fuelType: 'petrol', horsepower: 343, torque: 365, transmission: 'manual', drivetrain: 'rwd' },
+                { name: 'S54B32 CSL', displacement: '3.2L', fuelType: 'petrol', horsepower: 360, torque: 370, transmission: 'manual', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'E90',
+            displayName: 'E90/E92/E93 (2007-2013)',
+            startYear: 2007,
+            endYear: 2013,
+            bodyType: 'sedan',
+            engines: [
+                { name: 'S65B40', displacement: '4.0L', fuelType: 'petrol', horsepower: 420, torque: 400, transmission: 'manual', drivetrain: 'rwd' },
+                { name: 'S65B40 (DCT)', displacement: '4.0L', fuelType: 'petrol', horsepower: 420, torque: 400, transmission: 'dct', drivetrain: 'rwd' },
+                { name: 'S65B40 GTS', displacement: '4.4L', fuelType: 'petrol', horsepower: 450, torque: 440, transmission: 'dct', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'F80',
+            displayName: 'F80 (2014-2018)',
+            startYear: 2014,
+            endYear: 2018,
+            bodyType: 'sedan',
+            engines: [
+                { name: 'S55B30', displacement: '3.0L', fuelType: 'petrol', horsepower: 431, torque: 550, transmission: 'manual', drivetrain: 'rwd' },
+                { name: 'S55B30 Competition', displacement: '3.0L', fuelType: 'petrol', horsepower: 450, torque: 550, transmission: 'dct', drivetrain: 'rwd' },
+                { name: 'S55B30 CS', displacement: '3.0L', fuelType: 'petrol', horsepower: 460, torque: 600, transmission: 'dct', drivetrain: 'rwd' },
+            ],
+        },
+        {
+            name: 'G80',
+            displayName: 'G80 (2020-present)',
+            startYear: 2020,
+            endYear: undefined,
+            bodyType: 'sedan',
+            engines: [
+                { name: 'S58B30', displacement: '3.0L', fuelType: 'petrol', horsepower: 480, torque: 550, transmission: 'manual', drivetrain: 'rwd' },
+                { name: 'S58B30 Competition', displacement: '3.0L', fuelType: 'petrol', horsepower: 510, torque: 650, transmission: 'automatic', drivetrain: 'rwd' },
+                { name: 'S58B30 Competition xDrive', displacement: '3.0L', fuelType: 'petrol', horsepower: 510, torque: 650, transmission: 'automatic', drivetrain: 'awd' },
+                { name: 'S58B30 CS', displacement: '3.0L', fuelType: 'petrol', horsepower: 550, torque: 650, transmission: 'automatic', drivetrain: 'awd' },
+            ],
+        },
+    ],
+}

@@ -1,0 +1,269 @@
+export default {
+  // Common
+  common: {
+    appName: 'Motoverse',
+    loading: 'Lädt...',
+    error: 'Etwas ist schiefgelaufen',
+    save: 'Speichern',
+    cancel: 'Abbrechen',
+    delete: 'Löschen',
+    edit: 'Bearbeiten',
+    search: 'Suchen',
+    seeAll: 'Alle anzeigen',
+    learnMore: 'Mehr erfahren',
+  },
+
+  // Navigation
+  nav: {
+    feed: 'Feed',
+    cars: 'Autos',
+    explore: 'Entdecken',
+    myGarage: 'Meine Garage',
+    newPost: 'Neuer Beitrag',
+    signIn: 'Anmelden',
+    signOut: 'Abmelden',
+    getStarted: 'Loslegen',
+    profile: 'Profil',
+  },
+
+  // Landing page
+  landing: {
+    hero: {
+      title1: 'Deine Autos.',
+      title2: 'Deine Geschichten.',
+      title3: 'Deine Community.',
+      subtitle: 'Tritt dem ultimativen sozialen Netzwerk für Autobegeisterte bei. Teile deine Garage, dokumentiere deine Projekte, verbinde dich mit Gleichgesinnten und verkaufe sogar deine Fahrzeuge.',
+      cta: 'Kostenlos starten',
+      exploreCta: 'Projekte entdecken',
+    },
+    gearShifter: {
+      scrollToShift: 'Scrollen zum Schalten',
+      neutral: 'Leerlauf',
+      reverse: 'Zurück nach oben',
+    },
+    stats: {
+      enthusiasts: 'Auto-Enthusiasten',
+      carsInGarages: 'Autos in Garagen',
+      buildPosts: 'Projekt-Beiträge',
+      carsSold: 'Verkaufte Autos',
+    },
+    features: {
+      title: 'Alles was du für deine Auto-Leidenschaft brauchst',
+      subtitle: 'Von Enthusiasten für Enthusiasten',
+      garage: {
+        title: 'Deine digitale Garage',
+        description: 'Präsentiere alle deine Autos an einem Ort. Verfolge Modifikationen, Wartungshistorie und teile deine Projekte mit der Community.',
+      },
+      builds: {
+        title: 'Dokumentiere deine Projekte',
+        description: 'Erstelle detaillierte Beiträge über deine Modifikationen, Reparaturen und Upgrades. Hilf anderen aus deiner Erfahrung zu lernen.',
+      },
+      community: {
+        title: 'Verbinde dich mit Enthusiasten',
+        description: 'Folge anderen Autoliebhabern, nimm an Diskussionen teil und entdecke erstaunliche Projekte aus der ganzen Welt.',
+      },
+      marketplace: {
+        title: 'Marktplatz',
+        description: 'Kaufe und verkaufe Autos direkt von anderen Enthusiasten. Keine Händler, keine Zwischenhändler - nur echte Autofans.',
+      },
+      events: {
+        title: 'Treffen & Events',
+        description: 'Entdecke lokale Autotreffen, Ausstellungen und Trackdays. Verpasse nie ein Treffen von Gleichgesinnten.',
+      },
+    },
+    howItWorks: {
+      title: 'So funktioniert Motoverse',
+      step1: {
+        title: '1. Füge deine Autos hinzu',
+        description: 'Erstelle deine digitale Garage. Füge alle deine aktuellen und früheren Fahrzeuge mit Spezifikationen und Fotos hinzu.',
+      },
+      step2: {
+        title: '2. Teile deine Reise',
+        description: 'Poste über Modifikationen, Wartung, Roadtrips und alles rund ums Auto.',
+      },
+      step3: {
+        title: '3. Tritt der Community bei',
+        description: 'Folge Enthusiasten, kommentiere Projekte, hole dir Ratschläge und finde Freunde die deine Leidenschaft teilen.',
+      },
+    },
+    cta: {
+      title: 'Bereit der Community beizutreten?',
+      subtitle: 'Erstelle dein kostenloses Konto und beginne noch heute mit dem Aufbau deiner digitalen Garage.',
+      button: 'Kostenloses Konto erstellen',
+    },
+  },
+
+  // Cars catalog
+  cars: {
+    title: 'Auto-Katalog',
+    subtitle: 'Durchsuche Autos nach Marke und Modell. Finde dein Fahrzeug oder entdecke was andere fahren.',
+    searchPlaceholder: 'Marken und Modelle suchen...',
+    popularMakes: 'Beliebte Marken',
+    allMakes: 'Alle Marken',
+    models: 'Modelle',
+    noModelsYet: 'Noch keine Modelle',
+    beFirstToAdd: 'Sei der Erste der einen {make} zur Garage hinzufügt!',
+    inGarages: 'in Garagen',
+    addToGarage: 'Zu meiner Garage hinzufügen',
+    communityGarages: 'Community Garagen',
+    noCarsYet: 'Noch keine {model} in Garagen',
+    beFirstToAddModel: 'Sei der Erste der seinen {make} {model} hinzufügt!',
+    addYourCar: 'Dein Auto hinzufügen',
+    posts: 'Beiträge',
+  },
+
+  // Body types
+  bodyTypes: {
+    sedan: 'Limousine',
+    hatchback: 'Schrägheck',
+    suv: 'SUV',
+    coupe: 'Coupé',
+    wagon: 'Kombi',
+    convertible: 'Cabrio',
+    truck: 'Pickup',
+    van: 'Van',
+    other: 'Sonstige',
+  },
+
+  // Post categories
+  postCategories: {
+    maintenance: 'Wartung',
+    modification: 'Modifikation',
+    journey: 'Reise',
+    review: 'Bewertung',
+    other: 'Sonstiges',
+  },
+
+  // Footer
+  footer: {
+    about: 'Über uns',
+    terms: 'AGB',
+    privacy: 'Datenschutz',
+    contact: 'Kontakt',
+    copyright: '© {year} Motoverse. Alle Rechte vorbehalten.',
+  },
+
+  // Garage (English placeholders)
+  garage: {
+    title: 'My Garage',
+    addCar: 'Add Car',
+    noCars: 'Your garage is empty',
+    addFirstCar: 'Add your first car to get started!',
+    carCount: '{count} car(s)',
+    viewCar: 'View',
+    editCar: 'Edit',
+    deleteCar: 'Delete',
+    posts: 'posts',
+    mileage: 'Mileage',
+    horsepower: 'HP',
+    confirmDelete: 'Are you sure you want to delete this car? This will also delete all posts associated with it.',
+    addCarTitle: 'Add a Car',
+    addCarSubtitle: 'Add a new car to your garage',
+    selectMake: 'Select Make',
+    selectModel: 'Select Model',
+    year: 'Year',
+    nickname: 'Nickname (optional)',
+    nicknamePlaceholder: 'e.g., "Daily Driver" or "Project Car"',
+    engine: 'Engine',
+    enginePlaceholder: 'e.g., 2.0L Turbo',
+    transmission: 'Transmission',
+    transmissions: {
+      manual: 'Manual',
+      automatic: 'Automatic',
+      cvt: 'CVT',
+      dct: 'DCT/DSG',
+      other: 'Other',
+    },
+    drivetrain: 'Drivetrain',
+    drivetrains: {
+      fwd: 'FWD',
+      rwd: 'RWD',
+      awd: 'AWD',
+      '4wd': '4WD',
+    },
+    fuelType: 'Fuel Type',
+    fuelTypes: {
+      petrol: 'Petrol/Gasoline',
+      diesel: 'Diesel',
+      electric: 'Electric',
+      hybrid: 'Hybrid',
+      lpg: 'LPG',
+    },
+    horsepowerLabel: 'Horsepower',
+    horsepowerPlaceholder: 'e.g., 200',
+    color: 'Color',
+    colorPlaceholder: 'e.g., Nardo Grey',
+    mileageLabel: 'Current Mileage',
+    mileagePlaceholder: 'e.g., 50000',
+    purchaseDate: 'Purchase Date',
+    addCarButton: 'Add to Garage',
+    adding: 'Adding...',
+    carAdded: 'Car added to your garage!',
+    errors: {
+      selectMake: 'Please select a make',
+      selectModel: 'Please select a model',
+      selectYear: 'Please select a year',
+      failed: 'Failed to add car. Please try again.',
+    },
+  },
+
+  // Profile
+  profile: {
+    followers: 'Follower',
+    following: 'Folgt',
+    posts: 'Beiträge',
+    cars: 'Autos',
+    follow: 'Folgen',
+    unfollow: 'Entfolgen',
+    editProfile: 'Profil bearbeiten',
+  },
+
+  // Auth (English placeholders for now)
+  auth: {
+    register: {
+      title: 'Create your account',
+      subtitle: 'Join the Motoverse community',
+      emailLabel: 'Email address',
+      emailPlaceholder: 'you@example.com',
+      usernameLabel: 'Username',
+      usernamePlaceholder: 'gearhead',
+      usernameHint: '3-20 characters, letters, numbers and underscores',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'At least 8 characters',
+      nameLabel: 'Display name (optional)',
+      namePlaceholder: 'How should we call you?',
+      submitButton: 'Create Account',
+      submitting: 'Creating account...',
+      haveAccount: 'Already have an account?',
+      signInLink: 'Sign in',
+      errors: {
+        missingFields: 'Please fill in all required fields',
+        invalidEmail: 'Please enter a valid email address',
+        invalidUsername: 'Username must be 3-20 characters, start with a letter',
+        weakPassword: 'Password must be at least 8 characters',
+        emailTaken: 'An account with this email already exists',
+        usernameTaken: 'This username is already taken',
+        failed: 'Something went wrong. Please try again.',
+      },
+    },
+    login: {
+      title: 'Welcome back',
+      subtitle: 'Sign in to your Motoverse account',
+      emailLabel: 'Email address',
+      emailPlaceholder: 'you@example.com',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'Your password',
+      submitButton: 'Sign In',
+      submitting: 'Signing in...',
+      noAccount: "Don't have an account?",
+      registerLink: 'Create one',
+      forgotPassword: 'Forgot password?',
+      errors: {
+        missingFields: 'Please enter your email and password',
+        invalidEmail: 'Please enter a valid email address',
+        invalidCredentials: 'Invalid email or password',
+        failed: 'Something went wrong. Please try again.',
+      },
+    },
+  },
+} as const

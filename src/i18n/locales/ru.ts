@@ -1,0 +1,269 @@
+export default {
+  // Common
+  common: {
+    appName: 'Motoverse',
+    loading: 'Загрузка...',
+    error: 'Что-то пошло не так',
+    save: 'Сохранить',
+    cancel: 'Отмена',
+    delete: 'Удалить',
+    edit: 'Редактировать',
+    search: 'Поиск',
+    seeAll: 'Смотреть все',
+    learnMore: 'Узнать больше',
+  },
+
+  // Navigation
+  nav: {
+    feed: 'Лента',
+    cars: 'Автомобили',
+    explore: 'Обзор',
+    myGarage: 'Мой Гараж',
+    newPost: 'Новая Запись',
+    signIn: 'Войти',
+    signOut: 'Выйти',
+    getStarted: 'Начать',
+    profile: 'Профиль',
+  },
+
+  // Landing page
+  landing: {
+    hero: {
+      title1: 'Твои машины.',
+      title2: 'Твои истории.',
+      title3: 'Твоё сообщество.',
+      subtitle: 'Присоединяйся к лучшей социальной сети для автолюбителей. Делись своим гаражом, документируй свои проекты, общайся с единомышленниками и даже продавай свои машины.',
+      cta: 'Начать Бесплатно',
+      exploreCta: 'Смотреть Проекты',
+    },
+    gearShifter: {
+      scrollToShift: 'Прокрути для переключения передач',
+      neutral: 'Нейтраль',
+      reverse: 'Наверх',
+    },
+    stats: {
+      enthusiasts: 'Автолюбителей',
+      carsInGarages: 'Машин в Гаражах',
+      buildPosts: 'Записей о Проектах',
+      carsSold: 'Продано Машин',
+    },
+    features: {
+      title: 'Всё что нужно для твоей страсти к машинам',
+      subtitle: 'Создано энтузиастами для энтузиастов',
+      garage: {
+        title: 'Твой Цифровой Гараж',
+        description: 'Покажи все свои машины в одном месте. Отслеживай модификации, историю обслуживания и делись своими проектами с сообществом.',
+      },
+      builds: {
+        title: 'Документируй Свои Проекты',
+        description: 'Создавай подробные записи о своих модификациях, ремонтах и улучшениях. Помоги другим учиться на твоём опыте.',
+      },
+      community: {
+        title: 'Общайся с Энтузиастами',
+        description: 'Подписывайся на других автолюбителей, участвуй в обсуждениях и открывай удивительные проекты со всего мира.',
+      },
+      marketplace: {
+        title: 'Маркетплейс',
+        description: 'Покупай и продавай машины напрямую от других энтузиастов. Без дилеров, без посредников - только настоящие автолюбители.',
+      },
+      events: {
+        title: 'Встречи и События',
+        description: 'Открывай местные автовстречи, выставки и трек-дни. Не пропускай ни одного собрания энтузиастов.',
+      },
+    },
+    howItWorks: {
+      title: 'Как работает Motoverse',
+      step1: {
+        title: '1. Добавь свои машины',
+        description: 'Создай свой цифровой гараж. Добавь все свои текущие и прошлые машины с характеристиками и фотографиями.',
+      },
+      step2: {
+        title: '2. Делись своим путём',
+        description: 'Публикуй о модификациях, обслуживании, поездках и всём что связано с машинами.',
+      },
+      step3: {
+        title: '3. Присоединяйся к сообществу',
+        description: 'Подписывайся на энтузиастов, комментируй проекты, получай советы и находи друзей которые разделяют твою страсть.',
+      },
+    },
+    cta: {
+      title: 'Готов присоединиться к сообществу?',
+      subtitle: 'Создай бесплатный аккаунт и начни строить свой цифровой гараж сегодня.',
+      button: 'Создать Бесплатный Аккаунт',
+    },
+  },
+
+  // Cars catalog
+  cars: {
+    title: 'Каталог Автомобилей',
+    subtitle: 'Ищи машины по марке и модели. Найди свою машину или узнай что водят другие.',
+    searchPlaceholder: 'Поиск марок и моделей...',
+    popularMakes: 'Популярные Марки',
+    allMakes: 'Все Марки',
+    models: 'моделей',
+    noModelsYet: 'Моделей пока нет',
+    beFirstToAdd: 'Будь первым кто добавит {make} в свой гараж!',
+    inGarages: 'в гаражах',
+    addToGarage: 'Добавить в Мой Гараж',
+    communityGarages: 'Гаражи Сообщества',
+    noCarsYet: '{model} пока нет в гаражах',
+    beFirstToAddModel: 'Будь первым кто добавит свой {make} {model}!',
+    addYourCar: 'Добавить Свою Машину',
+    posts: 'записей',
+  },
+
+  // Body types
+  bodyTypes: {
+    sedan: 'Седан',
+    hatchback: 'Хэтчбек',
+    suv: 'Внедорожник',
+    coupe: 'Купе',
+    wagon: 'Универсал',
+    convertible: 'Кабриолет',
+    truck: 'Пикап',
+    van: 'Минивэн',
+    other: 'Другое',
+  },
+
+  // Post categories
+  postCategories: {
+    maintenance: 'Обслуживание',
+    modification: 'Модификация',
+    journey: 'Путешествие',
+    review: 'Обзор',
+    other: 'Другое',
+  },
+
+  // Footer
+  footer: {
+    about: 'О Нас',
+    terms: 'Условия',
+    privacy: 'Конфиденциальность',
+    contact: 'Контакты',
+    copyright: '© {year} Motoverse. Все права защищены.',
+  },
+
+  // Garage (English placeholders)
+  garage: {
+    title: 'My Garage',
+    addCar: 'Add Car',
+    noCars: 'Your garage is empty',
+    addFirstCar: 'Add your first car to get started!',
+    carCount: '{count} car(s)',
+    viewCar: 'View',
+    editCar: 'Edit',
+    deleteCar: 'Delete',
+    posts: 'posts',
+    mileage: 'Mileage',
+    horsepower: 'HP',
+    confirmDelete: 'Are you sure you want to delete this car? This will also delete all posts associated with it.',
+    addCarTitle: 'Add a Car',
+    addCarSubtitle: 'Add a new car to your garage',
+    selectMake: 'Select Make',
+    selectModel: 'Select Model',
+    year: 'Year',
+    nickname: 'Nickname (optional)',
+    nicknamePlaceholder: 'e.g., "Daily Driver" or "Project Car"',
+    engine: 'Engine',
+    enginePlaceholder: 'e.g., 2.0L Turbo',
+    transmission: 'Transmission',
+    transmissions: {
+      manual: 'Manual',
+      automatic: 'Automatic',
+      cvt: 'CVT',
+      dct: 'DCT/DSG',
+      other: 'Other',
+    },
+    drivetrain: 'Drivetrain',
+    drivetrains: {
+      fwd: 'FWD',
+      rwd: 'RWD',
+      awd: 'AWD',
+      '4wd': '4WD',
+    },
+    fuelType: 'Fuel Type',
+    fuelTypes: {
+      petrol: 'Petrol/Gasoline',
+      diesel: 'Diesel',
+      electric: 'Electric',
+      hybrid: 'Hybrid',
+      lpg: 'LPG',
+    },
+    horsepowerLabel: 'Horsepower',
+    horsepowerPlaceholder: 'e.g., 200',
+    color: 'Color',
+    colorPlaceholder: 'e.g., Nardo Grey',
+    mileageLabel: 'Current Mileage',
+    mileagePlaceholder: 'e.g., 50000',
+    purchaseDate: 'Purchase Date',
+    addCarButton: 'Add to Garage',
+    adding: 'Adding...',
+    carAdded: 'Car added to your garage!',
+    errors: {
+      selectMake: 'Please select a make',
+      selectModel: 'Please select a model',
+      selectYear: 'Please select a year',
+      failed: 'Failed to add car. Please try again.',
+    },
+  },
+
+  // Profile
+  profile: {
+    followers: 'Подписчиков',
+    following: 'Подписки',
+    posts: 'Записей',
+    cars: 'Машин',
+    follow: 'Подписаться',
+    unfollow: 'Отписаться',
+    editProfile: 'Редактировать Профиль',
+  },
+
+  // Auth (English placeholders for now)
+  auth: {
+    register: {
+      title: 'Create your account',
+      subtitle: 'Join the Motoverse community',
+      emailLabel: 'Email address',
+      emailPlaceholder: 'you@example.com',
+      usernameLabel: 'Username',
+      usernamePlaceholder: 'gearhead',
+      usernameHint: '3-20 characters, letters, numbers and underscores',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'At least 8 characters',
+      nameLabel: 'Display name (optional)',
+      namePlaceholder: 'How should we call you?',
+      submitButton: 'Create Account',
+      submitting: 'Creating account...',
+      haveAccount: 'Already have an account?',
+      signInLink: 'Sign in',
+      errors: {
+        missingFields: 'Please fill in all required fields',
+        invalidEmail: 'Please enter a valid email address',
+        invalidUsername: 'Username must be 3-20 characters, start with a letter',
+        weakPassword: 'Password must be at least 8 characters',
+        emailTaken: 'An account with this email already exists',
+        usernameTaken: 'This username is already taken',
+        failed: 'Something went wrong. Please try again.',
+      },
+    },
+    login: {
+      title: 'Welcome back',
+      subtitle: 'Sign in to your Motoverse account',
+      emailLabel: 'Email address',
+      emailPlaceholder: 'you@example.com',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'Your password',
+      submitButton: 'Sign In',
+      submitting: 'Signing in...',
+      noAccount: "Don't have an account?",
+      registerLink: 'Create one',
+      forgotPassword: 'Forgot password?',
+      errors: {
+        missingFields: 'Please enter your email and password',
+        invalidEmail: 'Please enter a valid email address',
+        invalidCredentials: 'Invalid email or password',
+        failed: 'Something went wrong. Please try again.',
+      },
+    },
+  },
+} as const

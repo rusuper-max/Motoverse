@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  name          String?
+  bio           String?
+  avatar        String?
+  coverImage    String?
+  location      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  cars          Car[]
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  followers     Follow[]  @relation("following")
+  following     Follow[]  @relation("follower")
+  listings      Listing[]
+  performanceTimes PerformanceTime[]
+  organizedEvents Event[]
+  eventAttendances EventAttendee[]
+}
+
+// Car catalog - makes and models database
+model CarMake {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  slug          String     @unique
+  country       String?
+  logo          String?
+  isPopular     Boolean    @default(false)
+
+  models        CarModel[]
+}
+
+model CarModel {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String
+
+  makeId        String
+  make          CarMake         @relation(fields: [makeId], references: [id], onDelete: Cascade)
+  generations   CarGeneration[]
+
+  @@unique([makeId, slug])
+  @@index([makeId])
+}
+
+// Generation of a model (e.g., Audi TT 8N, 8J, 8S)
+model CarGeneration {
+  id            String         @id @default(cuid())
+  name          String                              // e.g., "8J", "E90", "W204"
+  displayName   String?                             // e.g., "TT (2G)" for user-friendly display
+  startYear     Int
+  endYear       Int?                                // null = still in production
+  bodyType      String?                             // sedan, hatchback, suv, coupe, etc.
+  image         String?                             // representative image of this generation
+
+  modelId       String
+  model         CarModel       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  engines       EngineConfig[]
+  cars          Car[]
+
+  @@unique([modelId, name])
+  @@index([modelId])
+}
+
+// Engine configurations for a generation with pre-filled specs
+model EngineConfig {
+  id            String        @id @default(cuid())
+  name          String                              // e.g., "2.0 TFSI", "3.2 VR6", "TDI 2.0"
+  displacement  String?                             // e.g., "2.0L", "3.2L"
+  fuelType      String                              // petrol, diesel, electric, hybrid
+  horsepower    Int?
+  torque        Int?                                // Nm
+  transmission  String?                             // manual, automatic, dct, cvt
+  drivetrain    String?                             // fwd, rwd, awd, 4wd
+
+  generationId  String
+  generation    CarGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  cars          Car[]
+
+  @@index([generationId])
+}
+
+model Car {
+  id            String    @id @default(cuid())
+  year          Int
+  nickname      String?
+  description   String?
+  image         String?
+  mileage       Int?
+  // Engine specs - either from EngineConfig or custom
+  engine        String?   // display name like "2.0 TFSI" or custom entry
+  transmission  String?   // manual, automatic, cvt, dct, other
+  drivetrain    String?   // fwd, rwd, awd, 4wd
+  fuelType      String?   // petrol, diesel, electric, hybrid, lpg
+  horsepower    Int?
+  torque        Int?
+  color         String?
+  purchaseDate  DateTime?
+  isPublic      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // === DETAILED SPECS ===
+  
+  // Weight
+  curbWeight        Int?      // kg - factory curb weight
+  weightWithDriver  Int?      // kg - with driver (for performance calcs)
+  
+  // Wheels
+  wheelSizeFront    String?   // e.g., "18x8.5"
+  wheelSizeRear     String?   // e.g., "18x9.5" (for staggered)
+  wheelBrand        String?   // e.g., "BBS", "Enkei", "OZ Racing"
+  wheelModel        String?   // e.g., "RS-GT", "RPF1"
+  wheelOffset       String?   // e.g., "+35" or "ET35"
+  
+  // Tires
+  tireSizeFront     String?   // e.g., "235/40R18"
+  tireSizeRear      String?   // e.g., "265/35R18"
+  tireBrand         String?   // e.g., "Michelin", "Pirelli"
+  tireModel         String?   // e.g., "Pilot Sport 4S", "P Zero"
+  tireCompound      String?   // street, sport, semi-slick, slick
+  
+  // Suspension
+  suspensionType    String?   // stock, lowering springs, coilovers, air
+  suspensionBrand   String?   // e.g., "KW", "Bilstein", "Öhlins"
+  suspensionDrop    String?   // e.g., "-30mm" or "adjustable"
+  
+  // Brakes
+  brakeFrontSize    String?   // e.g., "380mm"
+  brakeRearSize     String?   // e.g., "330mm"
+  brakeBrand        String?   // e.g., "Brembo", "AP Racing"
+  brakeType         String?   // stock, upgraded pads, big brake kit
+  
+  // Modifications - free text description of all mods
+  modifications     String?   // User writes what they've done to the car
+  
+  // Estimated/measured power (after mods)
+  estimatedHp       Int?      // calculated by AI or dyno-verified
+  estimatedTorque   Int?      // calculated by AI or dyno-verified
+  dynoVerified      Boolean   @default(false)  // true if dyno sheet uploaded
+
+  ownerId       String
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Car can be linked to generation (with optional engine config) or be fully custom
+  generationId  String?
+  generation    CarGeneration? @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  engineConfigId String?
+  engineConfig  EngineConfig?  @relation(fields: [engineConfigId], references: [id], onDelete: SetNull)
+
+  posts         Post[]
+  listings      Listing[]
+  performanceTimes PerformanceTime[]
+  eventAttendances EventAttendee[]
+
+  @@index([ownerId])
+  @@index([generationId])
+}
+
+model Post {
+  id            String    @id @default(cuid())
+  title         String
+  content       String
+  images        String?   // JSON array of image URLs
+  category      String    // maintenance, modification, journey, review, other
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  carId         String?
+  car           Car?      @relation(fields: [carId], references: [id], onDelete: SetNull)
+  comments      Comment[]
+  likes         Like[]
+
+  @@index([authorId])
+  @@index([carId])
+}
+
+model Comment {
+  id            String    @id @default(cuid())
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId        String
+  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([postId])
+}
+
+model Like {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId        String
+  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Follow {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+
+  followerId    String
+  follower      User      @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId   String
+  following     User      @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Listing {
+  id            String    @id @default(cuid())
+  price         Int
+  currency      String    @default("EUR")
+  description   String
+  status        String    @default("active") // active, sold, reserved
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sellerId      String
+  seller        User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([carId])
+}
+
+// Performance time submission for leaderboards
+model PerformanceTime {
+  id            String    @id @default(cuid())
+  
+  // The time/result
+  timeMs        Int       // Time in milliseconds (e.g., 4200 = 4.2s for 0-100)
+  category      String    // "0-100", "100-200", "200-300", "402m", "1000m", "track"
+  trackId       String?   // For track times only
+  track         Track?    @relation(fields: [trackId], references: [id])
+  
+  // Proof & verification  
+  proofUrl      String?   // Video or screenshot URL
+  proofType     String?   // "video", "screenshot", "telemetry"
+  status        String    @default("pending") // "pending", "approved", "rejected"
+  reviewedAt    DateTime?
+  reviewNote    String?
+  
+  // Conditions at time of run
+  runDate       DateTime  @default(now())
+  location      String?
+  weather       String?   // "dry", "wet", "cold", "hot"
+  altitude      Int?      // meters above sea level
+  
+  // Car state at time of run (snapshot)
+  carHp         Int?      // HP at time of run
+  carWeight     Int?      // Weight at time of run
+  carMods       String?   // Mods description at time of run
+  
+  // Relations
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([category])
+  @@index([status])
+  @@index([carId])
+  @@index([userId])
+}
+
+// Tracks for lap times
+model Track {
+  id            String    @id @default(cuid())
+  name          String    // "Nürburgring Nordschleife"
+  slug          String    @unique
+  country       String?
+  lengthMeters  Int?      // Track length in meters
+  
+  times         PerformanceTime[]
+  
+  @@index([slug])
+}
+
+// Car meet / event
+model Event {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  type          String    @default("meet") // meet, trackday, race, roadtrip
+  
+  // Location
+  location      String    // "Coffee shop parking lot, Munich"
+  address       String?   // Full address
+  city          String?   // For "near you" queries
+  country       String?
+  lat           Float?    // Latitude
+  lng           Float?    // Longitude
+  
+  // Timing
+  date          DateTime  // Event date/time
+  endDate       DateTime? // Optional end (for multi-day)
+  
+  // Settings
+  maxAttendees  Int?      // null = unlimited
+  isPublic      Boolean   @default(true)
+  coverImage    String?
+  
+  // Relations
+  organizerId   String
+  organizer     User      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  attendees     EventAttendee[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([date])
+  @@index([city])
+  @@index([organizerId])
+}
+
+// Event RSVP
+model EventAttendee {
+  id            String    @id @default(cuid())
+  status        String    @default("going") // going, interested, waitlist
+  
+  // Which car are they bringing?
+  carId         String?
+  car           Car?      @relation(fields: [carId], references: [id], onDelete: SetNull)
+  
+  // Co-pilot feature
+  lookingForRide Boolean  @default(false)
+  hasEmptySeat   Boolean  @default(false)
+  
+  eventId       String
+  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+}
