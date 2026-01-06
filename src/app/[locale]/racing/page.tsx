@@ -8,11 +8,7 @@ import Button from '@/components/ui/Button'
 import { Locale } from '@/i18n/config'
 
 // --- TRACK LAYOUTS ---
-// Track IDs that have SVG files in public/tracks/
-const AVAILABLE_TRACK_SVGS = ['aut'] // Add more as you download them
-
-// Check if track has SVG file
-const hasTrackSvg = (id: string) => AVAILABLE_TRACK_SVGS.includes(id)
+// TODO: Add track images later - using flags for now
 
 
 // --- RACE DATA ---
@@ -106,17 +102,9 @@ const RaceCard = ({ race, onClick }: { race: Race; onClick: (race: Race) => void
             </div>
         </div>
 
-        {/* Track/Flag Display */}
+        {/* Flag Display */}
         <div className="h-20 flex items-center justify-center">
-            {hasTrackSvg(race.id) ? (
-                <img
-                    src={`/tracks/${race.id}.png`}
-                    alt={race.circuit}
-                    className="h-16 w-auto opacity-60 group-hover:opacity-100 transition-opacity"
-                />
-            ) : (
-                <span className="text-5xl group-hover:scale-110 transition-transform">{race.flag}</span>
-            )}
+            <span className="text-5xl group-hover:scale-110 transition-transform">{race.flag}</span>
         </div>
 
         <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
@@ -137,17 +125,9 @@ const DetailModal = ({ race, onClose }: { race: Race; onClose: () => void }) => 
 
             <div className="relative w-full max-w-4xl bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] animate-in fade-in zoom-in-95 duration-300">
 
-                {/* Track/Flag Display */}
+                {/* Flag Display */}
                 <div className="w-full md:w-1/2 bg-gradient-to-br from-zinc-900 to-zinc-800 p-8 flex flex-col items-center justify-center relative border-b md:border-b-0 md:border-r border-zinc-700">
-                    {hasTrackSvg(race.id) ? (
-                        <img
-                            src={`/tracks/${race.id}.png`}
-                            alt={race.circuit}
-                            className="w-64 h-64 object-contain opacity-90"
-                        />
-                    ) : (
-                        <span className="text-9xl">{race.flag}</span>
-                    )}
+                    <span className="text-9xl">{race.flag}</span>
                     <div className="absolute bottom-6 w-full px-8 flex justify-between text-xs text-zinc-500 uppercase tracking-widest font-mono">
                         <span>{race.circuit}</span>
                         <span>2026</span>
