@@ -148,7 +148,7 @@ export default async function ModelPage({ params }: Props) {
             </div>
             <div>
               <div className="text-2xl font-bold text-white">
-                {model.cars.reduce((acc, car) => acc + car._count.posts, 0)}
+                {model.cars.reduce((acc: number, car) => acc + car._count.posts, 0)}
               </div>
               <div className="text-sm text-zinc-500">{dict.cars.posts}</div>
             </div>
