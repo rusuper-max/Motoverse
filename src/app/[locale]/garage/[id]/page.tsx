@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer } from 'lucide-react'
+import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
@@ -71,11 +71,12 @@ export default function CarDetailPage() {
 
     const { user, loading: authLoading } = useAuth()
     const [car, setCar] = useState<CarData | null>(null)
+    const [posts, setPosts] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
-    const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'mods'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'posts'>('overview')
 
     // Form state for specs
     const [specs, setSpecs] = useState({
@@ -106,7 +107,20 @@ export default function CarDetailPage() {
 
     useEffect(() => {
         fetchCar()
+        fetchPosts()
     }, [carId])
+
+    const fetchPosts = async () => {
+        try {
+            const res = await fetch(`/api/cars/${carId}/posts`)
+            if (res.ok) {
+                const data = await res.json()
+                setPosts(data.posts || [])
+            }
+        } catch {
+            // ignore
+        }
+    }
 
     const fetchCar = async () => {
         try {
@@ -282,7 +296,7 @@ export default function CarDetailPage() {
                     {[
                         { id: 'overview', label: 'Overview', icon: Car },
                         { id: 'specs', label: 'Specs', icon: Gauge },
-                        { id: 'mods', label: 'Modifications', icon: Wrench },
+                        { id: 'posts', label: 'History', icon: FileText },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -457,101 +471,66 @@ export default function CarDetailPage() {
                         </div>
                     )}
 
-                    {activeTab === 'mods' && (
+                    {activeTab === 'posts' && (
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-white">Modifications</h2>
-                                {isOwner && !editing && (
-                                    <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                                        <Settings className="w-4 h-4 mr-2" />
-                                        Edit Mods
-                                    </Button>
-                                )}
-                                {editing && (
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
-                                            <X className="w-4 h-4 mr-1" />
-                                            Cancel
+                                <h2 className="text-xl font-semibold text-white">Car History</h2>
+                                {isOwner && (
+                                    <Link href={`/${locale}/garage/${car.id}/post`}>
+                                        <Button size="sm">
+                                            <PenLine className="w-4 h-4 mr-2" />
+                                            Write Post
                                         </Button>
-                                        <Button size="sm" onClick={handleSaveSpecs} disabled={saving}>
-                                            <Save className="w-4 h-4 mr-1" />
-                                            {saving ? 'Saving...' : 'Save'}
-                                        </Button>
-                                    </div>
+                                    </Link>
                                 )}
                             </div>
 
-                            {error && (
-                                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                                    {error}
-                                </div>
-                            )}
-
-                            {editing ? (
-                                <div className="space-y-6">
-                                    {/* Free-text modifications */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-400 mb-2">
-                                            Describe your modifications
-                                        </label>
-                                        <textarea
-                                            value={specs.modifications}
-                                            onChange={e => setSpecs(s => ({ ...s, modifications: e.target.value }))}
-                                            placeholder="E.g., Stage 2 APR tune, Milltek turboback exhaust, Wagner intercooler, Eventuri intake, running 1.5 bar boost..."
-                                            rows={6}
-                                            className="w-full px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none resize-none"
-                                        />
-                                        <p className="text-xs text-zinc-500 mt-2">
-                                            Describe what you&apos;ve done to the car. Include intake, exhaust, tune, turbo upgrades, intercooler, etc.
-                                        </p>
-                                    </div>
-
-                                    {/* Estimated Power */}
-                                    <SpecSection title="Estimated Power (after mods)">
-                                        <SpecInput
-                                            label="Horsepower"
-                                            value={specs.estimatedHp}
-                                            onChange={v => setSpecs(s => ({ ...s, estimatedHp: v }))}
-                                            placeholder="e.g., 320"
-                                        />
-                                        <SpecInput
-                                            label="Torque (Nm)"
-                                            value={specs.estimatedTorque}
-                                            onChange={v => setSpecs(s => ({ ...s, estimatedTorque: v }))}
-                                            placeholder="e.g., 420"
-                                        />
-                                        <div className="col-span-2">
-                                            <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={specs.dynoVerified}
-                                                    onChange={e => setSpecs(s => ({ ...s, dynoVerified: e.target.checked }))}
-                                                    className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500"
-                                                />
-                                                Dyno Verified
-                                            </label>
-                                        </div>
-                                    </SpecSection>
+                            {posts.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <FileText className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+                                    <p className="text-zinc-400 mb-4">No posts yet. Document your car&apos;s journey!</p>
+                                    {isOwner && (
+                                        <Link href={`/${locale}/garage/${car.id}/post`}>
+                                            <Button>
+                                                <PenLine className="w-4 h-4 mr-2" />
+                                                Write Your First Post
+                                            </Button>
+                                        </Link>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="space-y-6">
-                                    {/* Modifications display */}
-                                    {specs.modifications ? (
-                                        <div className="bg-zinc-800/50 rounded-lg p-4">
-                                            <p className="text-white whitespace-pre-wrap">{specs.modifications}</p>
+                                <div className="space-y-4">
+                                    {posts.map((post, index) => (
+                                        <div key={post.id} className="relative pl-8 pb-6">
+                                            {/* Timeline line */}
+                                            {index < posts.length - 1 && (
+                                                <div className="absolute left-3 top-6 w-0.5 h-full bg-zinc-800" />
+                                            )}
+                                            {/* Timeline dot */}
+                                            <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                                                <FileText className="w-3 h-3 text-white" />
+                                            </div>
+                                            {/* Post card */}
+                                            <div className="bg-zinc-800/50 rounded-xl p-4 hover:bg-zinc-800 transition-colors">
+                                                <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
+                                                    <span className="bg-zinc-700 px-2 py-0.5 rounded capitalize">
+                                                        {post.category}
+                                                    </span>
+                                                    <span>
+                                                        {new Date(post.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                    {post.mileage && (
+                                                        <span>• {post.mileage.toLocaleString()} km</span>
+                                                    )}
+                                                    {post.cost && (
+                                                        <span>• €{post.cost}</span>
+                                                    )}
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-white mb-2">{post.title}</h3>
+                                                <p className="text-zinc-400 text-sm line-clamp-3">{post.content}</p>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <p className="text-zinc-500">No modifications documented yet.</p>
-                                    )}
-
-                                    {/* Estimated Power display */}
-                                    {(specs.estimatedHp || specs.estimatedTorque) && (
-                                        <SpecDisplaySection title="Estimated Power" items={[
-                                            { label: 'Horsepower', value: specs.estimatedHp ? `${specs.estimatedHp} HP` : null },
-                                            { label: 'Torque', value: specs.estimatedTorque ? `${specs.estimatedTorque} Nm` : null },
-                                            { label: 'Dyno Verified', value: specs.dynoVerified ? '✓ Yes' : null },
-                                        ]} />
-                                    )}
+                                    ))}
                                 </div>
                             )}
                         </div>

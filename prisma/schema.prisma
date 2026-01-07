@@ -176,6 +176,8 @@ model Post {
   content       String
   images        String?   // JSON array of image URLs
   category      String    // maintenance, modification, journey, review, other
+  mileage       Int?      // Mileage at time of post
+  cost          Float?    // Cost tracking (optional)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
