@@ -30,6 +30,7 @@ model User {
   organizedEvents Event[]
   eventAttendances EventAttendee[]
   carRatings    CarRating[]
+  historyNodes  HistoryNode[]
 }
 
 // Car catalog - makes and models database
@@ -167,6 +168,7 @@ model Car {
   performanceTimes PerformanceTime[]
   eventAttendances EventAttendee[]
   ratings       CarRating[]
+  historyNodes  HistoryNode[]
 
   @@index([ownerId])
   @@index([generationId])
@@ -189,6 +191,7 @@ model Post {
   car           Car?      @relation(fields: [carId], references: [id], onDelete: SetNull)
   comments      Comment[]
   likes         Like[]
+  linkedHistoryNodes HistoryNode[]
 
   @@index([authorId])
   @@index([carId])
@@ -389,3 +392,33 @@ model CarRating {
   @@unique([carId, userId])  // One rating per user per car
   @@index([carId])
 }
+
+// History nodes for visual car timeline
+model HistoryNode {
+  id          String   @id @default(cuid())
+  carId       String
+  car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  
+  type        String   // purchase, mod_engine, mod_suspension, mod_exterior, maintenance, trip, custom
+  title       String
+  description String?
+  date        DateTime
+  mileage     Int?
+  cost        Float?
+  
+  // Link to blog post (optional)
+  postId      String?
+  post        Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  
+  // Locked after ownership transfer
+  isLocked    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([carId])
+  @@index([authorId])
+}
+
