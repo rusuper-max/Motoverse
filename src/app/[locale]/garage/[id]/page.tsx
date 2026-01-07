@@ -526,41 +526,21 @@ export default function CarDetailPage() {
                         )}
 
                         {activeTab === 'history' && (
-                            <div className="space-y-6 history-grid-bg rounded-xl p-4 -m-4">
-                                <div className="flex items-center justify-between bg-zinc-900/80 rounded-xl p-4 backdrop-blur-sm">
-                                    <h2 className="text-xl font-semibold text-white">Car History</h2>
-                                    {isOwner && (
-                                        <Button size="sm" onClick={() => setShowAddNodeModal(true)}>
-                                            <Plus className="w-4 h-4 mr-2" />
-                                            Add Event
+                            <div className="space-y-6">
+                                <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700 rounded-2xl p-8 text-center">
+                                    <History className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+                                    <h2 className="text-2xl font-bold text-white mb-2">Car History Timeline</h2>
+                                    <p className="text-zinc-400 mb-6 max-w-md mx-auto">
+                                        View and edit your car&apos;s complete history with our visual node editor.
+                                        {historyNodes.length > 0 && ` ${historyNodes.length} events documented.`}
+                                    </p>
+                                    <Link href={`/${locale}/garage/${car.id}/history`}>
+                                        <Button size="lg">
+                                            <History className="w-5 h-5 mr-2" />
+                                            Open History Editor
                                         </Button>
-                                    )}
+                                    </Link>
                                 </div>
-
-                                {historyNodes.length === 0 ? (
-                                    <div className="text-center py-12 bg-zinc-900/80 rounded-xl backdrop-blur-sm">
-                                        <History className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-                                        <p className="text-zinc-400 mb-4">No history yet. Document your car&apos;s journey!</p>
-                                        {isOwner && (
-                                            <Button onClick={() => setShowAddNodeModal(true)}>
-                                                <Plus className="w-4 h-4 mr-2" />
-                                                Add First Event
-                                            </Button>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="pl-2 pt-4">
-                                        {historyNodes.map((node, index) => (
-                                            <HistoryCard
-                                                key={node.id}
-                                                node={node}
-                                                locale={locale}
-                                                isFirst={index === 0}
-                                                isLast={index === historyNodes.length - 1}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         )}
 
