@@ -29,6 +29,7 @@ model User {
   performanceTimes PerformanceTime[]
   organizedEvents Event[]
   eventAttendances EventAttendee[]
+  carRatings    CarRating[]
 }
 
 // Car catalog - makes and models database
@@ -165,6 +166,7 @@ model Car {
   listings      Listing[]
   performanceTimes PerformanceTime[]
   eventAttendances EventAttendee[]
+  ratings       CarRating[]
 
   @@index([ownerId])
   @@index([generationId])
@@ -368,4 +370,22 @@ model EventAttendee {
   @@unique([eventId, userId])
   @@index([eventId])
   @@index([userId])
+}
+
+// Car ratings (1-10 pistons)
+model CarRating {
+  id        String   @id @default(cuid())
+  carId     String
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  rating    Int      // 1-10 pistons
+  comment   String?  // Optional comment
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([carId, userId])  // One rating per user per car
+  @@index([carId])
 }

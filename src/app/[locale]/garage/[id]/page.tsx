@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine } from 'lucide-react'
+import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import PistonRating from '@/components/ui/PistonRating'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
@@ -72,11 +73,18 @@ export default function CarDetailPage() {
     const { user, loading: authLoading } = useAuth()
     const [car, setCar] = useState<CarData | null>(null)
     const [posts, setPosts] = useState<any[]>([])
+    const [ratings, setRatings] = useState<any[]>([])
+    const [avgRating, setAvgRating] = useState(0)
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
-    const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'posts'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'posts' | 'rating'>('overview')
+
+    // Rating form state
+    const [myRating, setMyRating] = useState(0)
+    const [myComment, setMyComment] = useState('')
+    const [submittingRating, setSubmittingRating] = useState(false)
 
     // Form state for specs
     const [specs, setSpecs] = useState({
@@ -108,6 +116,7 @@ export default function CarDetailPage() {
     useEffect(() => {
         fetchCar()
         fetchPosts()
+        fetchRatings()
     }, [carId])
 
     const fetchPosts = async () => {
@@ -119,6 +128,46 @@ export default function CarDetailPage() {
             }
         } catch {
             // ignore
+        }
+    }
+
+    const fetchRatings = async () => {
+        try {
+            const res = await fetch(`/api/cars/${carId}/ratings`)
+            if (res.ok) {
+                const data = await res.json()
+                setRatings(data.ratings || [])
+                setAvgRating(data.average || 0)
+                // Check if user already rated
+                if (user) {
+                    const myExistingRating = data.ratings?.find((r: { user: { id: string } }) => r.user.id === user.id)
+                    if (myExistingRating) {
+                        setMyRating(myExistingRating.rating)
+                        setMyComment(myExistingRating.comment || '')
+                    }
+                }
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    const handleSubmitRating = async () => {
+        if (!myRating || myRating < 1 || myRating > 10) return
+        setSubmittingRating(true)
+        try {
+            const res = await fetch(`/api/cars/${carId}/ratings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating: myRating, comment: myComment }),
+            })
+            if (res.ok) {
+                fetchRatings()
+            }
+        } catch {
+            // ignore
+        } finally {
+            setSubmittingRating(false)
         }
     }
 
@@ -292,11 +341,12 @@ export default function CarDetailPage() {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-2 mb-6">
+                <div className="flex gap-2 mb-6 flex-wrap">
                     {[
                         { id: 'overview', label: 'Overview', icon: Car },
                         { id: 'specs', label: 'Specs', icon: Gauge },
                         { id: 'posts', label: 'History', icon: FileText },
+                        { id: 'rating', label: `Rating ${avgRating > 0 ? `(${avgRating.toFixed(1)})` : ''}`, icon: Star },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -533,6 +583,87 @@ export default function CarDetailPage() {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {activeTab === 'rating' && (
+                        <div className="space-y-6">
+                            {/* Average Rating */}
+                            <div className="bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-xl p-6 border border-orange-500/30">
+                                <h2 className="text-xl font-semibold text-white mb-4">Community Rating</h2>
+                                <div className="flex items-center gap-4">
+                                    <PistonRating value={avgRating} readonly size="lg" />
+                                    <span className="text-zinc-400">({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>
+                                </div>
+                            </div>
+
+                            {/* Rate This Car (if not owner) */}
+                            {user && !isOwner && (
+                                <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
+                                    <h3 className="text-lg font-semibold text-white mb-4">Rate This Car</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm text-zinc-400 mb-2">Your Rating</label>
+                                            <PistonRating value={myRating} onChange={setMyRating} size="md" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-zinc-400 mb-2">Comment (optional)</label>
+                                            <textarea
+                                                value={myComment}
+                                                onChange={(e) => setMyComment(e.target.value)}
+                                                rows={3}
+                                                className="w-full px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none resize-none"
+                                                placeholder="Share your thoughts about this build..."
+                                            />
+                                        </div>
+                                        <Button onClick={handleSubmitRating} disabled={submittingRating || myRating === 0}>
+                                            <Star className="w-4 h-4 mr-2" />
+                                            {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!user && (
+                                <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700 text-center">
+                                    <p className="text-zinc-400 mb-4">Log in to rate this car</p>
+                                    <Link href={`/${locale}/login`}>
+                                        <Button>Log In</Button>
+                                    </Link>
+                                </div>
+                            )}
+
+                            {/* Reviews List */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-4">Reviews ({ratings.length})</h3>
+                                {ratings.length === 0 ? (
+                                    <p className="text-zinc-500">No reviews yet. Be the first to rate this car!</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {ratings.map((rating) => (
+                                            <div key={rating.id} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                                                            <span className="text-xs font-bold text-white">
+                                                                {(rating.user.name || rating.user.username).charAt(0).toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-white font-medium">{rating.user.name || rating.user.username}</span>
+                                                    </div>
+                                                    <span className="text-sm text-zinc-500">
+                                                        {new Date(rating.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <PistonRating value={rating.rating} readonly size="sm" />
+                                                {rating.comment && (
+                                                    <p className="text-zinc-400 mt-3">{rating.comment}</p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
