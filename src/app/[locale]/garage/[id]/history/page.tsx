@@ -60,7 +60,7 @@ interface HistoryNodeData {
     } | null
 }
 
-interface HistoryFlowNodeData {
+interface HistoryFlowNodeData extends Record<string, unknown> {
     type: string
     title: string
     description: string | null
@@ -75,7 +75,7 @@ interface HistoryFlowNodeData {
     } | null
 }
 
-interface HistoryEdgeData {
+interface HistoryEdgeData extends Record<string, unknown> {
     onDelete: (edgeId: string) => void
     onInsert: (edgeId: string, sourceId: string, targetId: string) => void
     source: string
