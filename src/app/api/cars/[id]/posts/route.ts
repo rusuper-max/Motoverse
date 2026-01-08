@@ -104,6 +104,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             },
         })
 
+        // Auto-create HistoryNode if it's a significant event (maintenance, mod, journey)
+        // Map post categories to node types
+        const NODE_TYPE_MAP: Record<string, string> = {
+            'maintenance': 'maintenance',
+            'modification': 'mod_exterior', // Default to exterior mod as generic
+            'journey': 'trip',
+            'review': 'custom',
+            'other': 'custom',
+        }
+
+        const nodeType = NODE_TYPE_MAP[category] || 'custom'
+
+        // Find last node to place this one roughly after (optional, simple logic)
+        // For now, we'll place it at 0,0 or slightly offset if we could find last. 
+        // Let's just create it at 0,0 and let user arrange.
+
+        await prisma.historyNode.create({
+            data: {
+                carId,
+                authorId: user.id,
+                type: nodeType,
+                title: title,
+                description: 'See blog post for details',
+                date: new Date(),
+                mileage: mileage ? parseInt(mileage) : null,
+                cost: cost ? parseFloat(cost) : null,
+                postId: post.id,
+                positionX: 100, // Default start pos
+                positionY: 100,
+            }
+        })
+
         return NextResponse.json({ post }, { status: 201 })
     } catch (error) {
         console.error('Error creating post:', error)

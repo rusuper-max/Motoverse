@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     {
       authenticated: !!user,
-      user: user ? { id: user.id, email: user.email, username: user.username, name: user.name } : null,
+      user: user ? { id: user.id, email: user.email, username: user.username, name: user.name, avatar: user.avatar } : null,
     },
     { headers: { 'Cache-Control': 'no-store', Vary: 'Cookie' } }
   )

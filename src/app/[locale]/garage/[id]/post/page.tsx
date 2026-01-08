@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Save, Wrench, Gauge, Car, MapPin, FileText } from 'lucide-react'
+import { ArrowLeft, Loader2, Image as ImageIcon, Send, Wrench, Gauge, Car, MapPin, FileText, ChevronLeft, Save } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import RichTextEditor from '@/components/blog/RichTextEditor'
+import { useAuth } from '@/hooks/useAuth'
 import { Locale } from '@/i18n/config'
 import { getDictionary } from '@/i18n'
 
@@ -98,8 +100,8 @@ export default function CreatePostPage() {
                                     type="button"
                                     onClick={() => setCategory(cat.id)}
                                     className={`p-4 rounded-xl border text-left transition-all ${category === cat.id
-                                            ? 'border-orange-500 bg-orange-500/10'
-                                            : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900'
+                                        ? 'border-orange-500 bg-orange-500/10'
+                                        : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900'
                                         }`}
                                 >
                                     <cat.icon className={`w-5 h-5 mb-2 ${category === cat.id ? 'text-orange-500' : 'text-zinc-400'
@@ -135,14 +137,10 @@ export default function CreatePostPage() {
                         <label htmlFor="content" className="block text-sm font-medium text-zinc-300 mb-2">
                             Content *
                         </label>
-                        <textarea
-                            id="content"
+                        <RichTextEditor
                             value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            rows={8}
-                            className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 resize-none"
-                            placeholder="Write about what you did, parts used, tips for others..."
-                            required
+                            onChange={setContent}
+                            placeholder="Write about what you did, parts used, tips for others... (Paste YouTube links on new line to embed)"
                         />
                     </div>
 

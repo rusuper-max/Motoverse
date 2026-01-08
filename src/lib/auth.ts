@@ -16,6 +16,7 @@ export interface SessionUser {
   email: string
   username: string
   name?: string | null
+  avatar?: string | null
 }
 
 // Cookie configuration
@@ -183,6 +184,7 @@ export async function createUser(data: {
     email: user.email,
     username: user.username,
     name: user.name,
+    avatar: user.avatar,
   }
 }
 
@@ -202,6 +204,7 @@ export async function authenticateUser(email: string, password: string): Promise
     email: user.email,
     username: user.username,
     name: user.name,
+    avatar: user.avatar,
   }
 }
 
