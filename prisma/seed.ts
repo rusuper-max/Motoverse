@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 import 'dotenv/config'
 
 // Import brand data from modular files
@@ -10,7 +11,13 @@ import {
   type GenerationData
 } from './seed/brands'
 
-const adapter = new PrismaLibSql({ url: 'file:dev.db' })
+const connectionString = process.env.DATABASE_URL
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not set')
+}
+
+const pool = new Pool({ connectionString })
+const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
 const carMakes = [
