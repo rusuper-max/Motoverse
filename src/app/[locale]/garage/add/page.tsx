@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Car, Check, Settings } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import ImageUpload from '@/components/ui/ImageUpload'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
@@ -87,6 +88,7 @@ export default function AddCarPage() {
   const [torque, setTorque] = useState('')
   const [color, setColor] = useState('')
   const [mileage, setMileage] = useState('')
+  const [images, setImages] = useState<string[]>([])
 
   // Submit state
   const [submitting, setSubmitting] = useState(false)
@@ -244,6 +246,8 @@ export default function AddCarPage() {
           torque: torque || undefined,
           color: color || undefined,
           mileage: mileage || undefined,
+          images, // Pass the gallery
+          thumbnail: images.length > 0 ? images[0] : undefined, // Auto-set thumbnail
         }),
       })
 
@@ -329,9 +333,8 @@ export default function AddCarPage() {
             return (
               <div key={s} className="flex items-center gap-2">
                 <div
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${
-                    isCurrent ? 'bg-orange-500 text-white' : isCompleted ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-800 text-zinc-500'
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${isCurrent ? 'bg-orange-500 text-white' : isCompleted ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-800 text-zinc-500'
+                    }`}
                 >
                   {isCompleted && !isCurrent ? <Check className="w-4 h-4" /> : i + 1}
                   <span>{labels[s]}</span>
@@ -743,6 +746,19 @@ export default function AddCarPage() {
                   onChange={(e) => setMileage(e.target.value)}
                   placeholder={t.mileagePlaceholder}
                   className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Photos */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-zinc-300 mb-2">Photos (Max 10)</label>
+                <ImageUpload
+                  value={images}
+                  onChange={(newImages) => setImages(newImages)}
+                  onRemove={(urlToRemove) => setImages(prev => prev.filter(url => url !== urlToRemove))}
+                  bucket="motoverse-photos"
+                  folderPath="cars"
+                  maxFiles={10}
                 />
               </div>
             </div>

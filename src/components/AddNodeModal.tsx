@@ -6,8 +6,9 @@ import Button from '@/components/ui/Button'
 
 interface AddNodeModalProps {
     carId: string
+    parentId?: string | null
     onClose: () => void
-    onSuccess: () => void
+    onSuccess: (node?: any) => void
 }
 
 const NODE_TYPES = [
@@ -20,7 +21,7 @@ const NODE_TYPES = [
     { id: 'custom', icon: FileText, label: 'Custom Event', color: 'from-zinc-500 to-zinc-600' },
 ]
 
-export default function AddNodeModal({ carId, onClose, onSuccess }: AddNodeModalProps) {
+export default function AddNodeModal({ carId, parentId, onClose, onSuccess }: AddNodeModalProps) {
     const [type, setType] = useState('')
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
@@ -50,15 +51,17 @@ export default function AddNodeModal({ carId, onClose, onSuccess }: AddNodeModal
                     date,
                     mileage: mileage || null,
                     cost: cost || null,
+                    parentId: parentId || null,
                 }),
             })
 
+            const data = await res.json()
+
             if (!res.ok) {
-                const data = await res.json()
                 throw new Error(data.error || 'Failed to add event')
             }
 
-            onSuccess()
+            onSuccess(data.node)
             onClose()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -95,8 +98,8 @@ export default function AddNodeModal({ carId, onClose, onSuccess }: AddNodeModal
                                     type="button"
                                     onClick={() => setType(nodeType.id)}
                                     className={`p-3 rounded-lg border text-left transition-all flex items-center gap-2 ${type === nodeType.id
-                                            ? 'border-orange-500 bg-orange-500/10'
-                                            : 'border-zinc-800 hover:border-zinc-700 bg-zinc-800/50'
+                                        ? 'border-orange-500 bg-orange-500/10'
+                                        : 'border-zinc-800 hover:border-zinc-700 bg-zinc-800/50'
                                         }`}
                                 >
                                     <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${nodeType.color} flex items-center justify-center`}>

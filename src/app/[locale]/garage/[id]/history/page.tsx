@@ -15,7 +15,7 @@ import {
     Panel,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp, FileText } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import HistoryFlowNode from '@/components/flow/HistoryFlowNode'
 import DeletableEdge from '@/components/flow/DeletableEdge'
@@ -51,6 +51,17 @@ interface HistoryNodeData {
     positionX: number
     positionY: number
     parentId: string | null
+    post?: {
+        id: string
+        title: string
+        thumbnail: string | null
+    } | null
+}
+
+interface PopupData {
+    x: number
+    y: number
+    post: { id: string; title: string; thumbnail: string | null }
 }
 
 // Custom node types for React Flow
@@ -80,6 +91,8 @@ export default function HistoryPage() {
     const [pendingConnection, setPendingConnection] = useState<{ x: number; y: number } | null>(null)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
     const [editingNode, setEditingNode] = useState<HistoryNodeData | null>(null)
+    const [insertionContext, setInsertionContext] = useState<{ parentId: string; childId: string } | null>(null)
+    const [popupData, setPopupData] = useState<PopupData | null>(null)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [nodes, setNodes, onNodesChange] = useNodesState<any>([])
@@ -130,6 +143,7 @@ export default function HistoryPage() {
                         mileage: node.mileage,
                         cost: node.cost,
                         isLocked: node.isLocked,
+                        post: node.post,
                     },
                 }))
 
@@ -140,24 +154,19 @@ export default function HistoryPage() {
                         id: `e-${node.parentId}-${node.id}`,
                         source: node.parentId!,
                         target: node.id,
-                        type: 'smoothstep' as const,
+                        type: 'deletable' as const,
                         style: { stroke: '#52525b', strokeWidth: 2 },
+                        data: {
+                            onDelete: deleteEdgeRef.current,
+                            onInsert: insertNodeRef.current,
+                            source: node.parentId!,
+                            target: node.id
+                        } // Use ref
                     }))
 
-                // Also connect nodes sequentially if no parent is specified
-                const nodesWithoutParent = historyNodes.filter(n => !n.parentId)
-                for (let i = 1; i < nodesWithoutParent.length; i++) {
-                    const alreadyConnected = flowEdges.some(e => e.target === nodesWithoutParent[i].id)
-                    if (!alreadyConnected) {
-                        flowEdges.push({
-                            id: `e-${nodesWithoutParent[i - 1].id}-${nodesWithoutParent[i].id}`,
-                            source: nodesWithoutParent[i - 1].id,
-                            target: nodesWithoutParent[i].id,
-                            type: 'smoothstep' as const,
-                            style: { stroke: '#52525b', strokeWidth: 2 },
-                        })
-                    }
-                }
+                setNodes(flowNodes)
+                setEdges(flowEdges)
+                setRawNodes(historyNodes)
 
                 setNodes(flowNodes)
                 setEdges(flowEdges)
@@ -166,13 +175,80 @@ export default function HistoryPage() {
         } catch { /* ignore */ }
     }
 
-    const onConnect = useCallback((connection: any) => {
+    // Use a ref for deleteEdge function to be used in fetchNodes without dependency cycle
+    const deleteEdgeRef = useRef<(edgeId: string) => void>(() => { })
+    const insertNodeRef = useRef<(edgeId: string, sourceId: string, targetId: string) => void>(() => { })
+
+    const onConnect = useCallback(async (connection: any) => {
+        // Optimistic update
         setEdges((eds: any) => addEdge({
             ...connection,
-            type: 'smoothstep',
+            type: 'deletable',
             style: { stroke: '#52525b', strokeWidth: 2 },
+            data: {
+                onDelete: deleteEdgeRef.current,
+                onInsert: insertNodeRef.current,
+                source: connection.source,
+                target: connection.target
+            }
         }, eds))
-    }, [setEdges])
+
+        // Persist to DB
+        try {
+            const res = await fetch(`/api/cars/${carId}/history/${connection.target}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    parentId: connection.source,
+                }),
+            })
+            if (!res.ok) {
+                console.error('Failed to link nodes')
+                // Revert or show error (could implement revert logic here)
+            }
+        } catch (err) {
+            console.error('Failed to link nodes:', err)
+        }
+    }, [carId, setEdges])
+
+    // Delete an edge
+    const deleteEdge = useCallback(async (edgeId: string) => {
+        // Find the edge to get the target node ID
+        const edgeToDelete = edges.find((e: any) => e.id === edgeId)
+        if (!edgeToDelete) return
+
+        // Optimistic update
+        setEdges((eds: any) => eds.filter((e: any) => e.id !== edgeId))
+
+        // Persist to DB (set parentId to null)
+        try {
+            const res = await fetch(`/api/cars/${carId}/history/${edgeToDelete.target}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    parentId: null, // Disconnect
+                }),
+            })
+            if (!res.ok) {
+                console.error('Failed to unlink nodes')
+            }
+        } catch (err) {
+            console.error('Failed to unlink nodes:', err)
+        }
+    }, [edges, carId, setEdges])
+
+    // Insert node between two others
+    const handleInsertNode = useCallback((edgeId: string, sourceId: string, targetId: string) => {
+        console.log('Inserting node between', sourceId, 'and', targetId)
+        setInsertionContext({ parentId: sourceId, childId: targetId })
+        setShowAddModal(true)
+    }, [])
+
+    // Update ref whenever handlers change
+    useEffect(() => {
+        deleteEdgeRef.current = deleteEdge
+        insertNodeRef.current = handleInsertNode
+    }, [deleteEdge, handleInsertNode])
 
     const savePositions = async () => {
         setSaving(true)
@@ -250,11 +326,7 @@ export default function HistoryPage() {
         }, 500)
     }, [carId, isOwner, autoSaveEnabled])
 
-    // Delete an edge
-    const deleteEdge = useCallback((edgeId: string) => {
-        setEdges((eds: any) => eds.filter((e: any) => e.id !== edgeId))
-        setHasChanges(true)
-    }, [setEdges])
+
 
     // When dragging from a handle and releasing on empty canvas, open add modal
     const onConnectEnd = useCallback((event: any) => {
@@ -284,6 +356,7 @@ export default function HistoryPage() {
 
     const handlePaneClick = useCallback(() => {
         setContextMenu(null)
+        setPopupData(null)
     }, [])
 
     const handleAddNode = useCallback((type: string) => {
@@ -319,6 +392,23 @@ export default function HistoryPage() {
         setContextMenu(null)
     }, [contextMenu, rawNodes])
 
+    const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+        // If node has a linked post, show the popup near the node
+        if (node.data.post) {
+            // Calculate position relative to the viewport/container
+            // event.clientX/Y are reliable for screen positioning
+            setPopupData({
+                x: event.clientX,
+                y: event.clientY,
+                post: node.data.post
+            })
+        } else {
+            setPopupData(null)
+        }
+    }, [])
+
+
+
     const handleBranchNode = useCallback(() => {
         if (!contextMenu?.nodeId) return
         // Open add modal with the parent node set
@@ -346,6 +436,41 @@ export default function HistoryPage() {
         maintenance: 'Maintenance',
         trip: 'Road Trips',
         custom: 'Other',
+    }
+
+    const handleNodeCreated = async (newNode?: any) => {
+        if (!newNode) {
+            fetchNodes()
+            return
+        }
+
+        // If we were inserting between nodes, we need to update the child node
+        if (insertionContext) {
+            try {
+                // Update the child node (insertionContext.childId) to have the new node as parent
+                // The new node was already created with parentId = insertionContext.parentId
+                const res = await fetch(`/api/cars/${carId}/history/${insertionContext.childId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        parentId: newNode.id,
+                    }),
+                })
+
+                if (!res.ok) {
+                    console.error('Failed to link child node to inserted node')
+                } else {
+                    console.log('Successfully inserted node in chain')
+                }
+            } catch (err) {
+                console.error('Failed to re-link nodes after insertion:', err)
+            } finally {
+                setInsertionContext(null)
+            }
+        }
+
+        fetchNodes()
+        setShowAddModal(false)
     }
 
     if (loading) {
@@ -485,13 +610,14 @@ export default function HistoryPage() {
             <div ref={reactFlowWrapper} className="flex-1 bg-zinc-950">
                 <ReactFlow
                     nodes={nodes}
-                    edges={edges.map((e: any) => ({ ...e, data: { ...e.data, onDelete: deleteEdge } }))}
+                    edges={edges}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
                     onConnectEnd={onConnectEnd}
                     onNodeDragStop={onNodeDragStop}
                     onPaneClick={handlePaneClick}
+                    onNodeClick={onNodeClick}
                     onNodeContextMenu={handleContextMenu}
                     onPaneContextMenu={handleContextMenu}
                     nodeTypes={nodeTypes}
@@ -511,7 +637,9 @@ export default function HistoryPage() {
                         size={1}
                         color="#27272a"
                     />
-                    <Controls className="!bg-zinc-800 !border-zinc-700 !rounded-lg [&>button]:!bg-zinc-800 [&>button]:!border-zinc-700 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-700" />
+                    <Controls
+                        className="!bg-zinc-800 !border-zinc-700 !rounded-lg !mb-4 !ml-4 [&>button]:!bg-zinc-800 [&>button]:!border-zinc-700 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-700"
+                    />
                     <MiniMap
                         className="!bg-zinc-900 !border-zinc-800"
                         nodeColor="#52525b"
@@ -562,11 +690,12 @@ export default function HistoryPage() {
             {showAddModal && (
                 <AddNodeModal
                     carId={carId}
-                    onClose={() => setShowAddModal(false)}
-                    onSuccess={() => {
-                        fetchNodes()
+                    parentId={insertionContext?.parentId}
+                    onClose={() => {
                         setShowAddModal(false)
+                        setInsertionContext(null)
                     }}
+                    onSuccess={handleNodeCreated}
                 />
             )}
 
@@ -581,6 +710,69 @@ export default function HistoryPage() {
                         setEditingNode(null)
                     }}
                 />
+            )}
+
+            {/* Floating Post Popup */}
+            {popupData && (
+                <div
+                    className="fixed z-50 w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                    style={{
+                        left: popupData.x,
+                        top: popupData.y,
+                        transform: 'translate(-50%, -110%)' // Center horizontally above the click
+                    }}
+                >
+                    {/* Thumbnail */}
+                    {popupData.post.thumbnail && (
+                        <div className="h-32 w-full bg-zinc-800 relative">
+                            <img
+                                src={popupData.post.thumbnail}
+                                alt=""
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-80" />
+                        </div>
+                    )}
+
+                    <div className="p-4 relative">
+                        {!popupData.post.thumbnail && (
+                            <div className="absolute top-4 right-4 w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center">
+                                <FileText className="w-4 h-4 text-orange-500" />
+                            </div>
+                        )}
+
+                        <h4 className="font-bold text-white text-sm mb-1 line-clamp-2 pr-6">
+                            {popupData.post.title}
+                        </h4>
+                        <div className="flex items-center gap-1 text-xs text-orange-400 mb-3">
+                            <FileText className="w-3 h-3" />
+                            <span>Linked Blog Post</span>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <Link
+                                href={`/${locale}/posts/${popupData.post.id}`}
+                                className="flex-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg text-center transition-colors"
+                            >
+                                Read Post
+                            </Link>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setPopupData(null)
+                                }}
+                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium rounded-lg transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Arrow Pointer */}
+                    <div
+                        className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-900 border-b border-r border-zinc-700 transform rotate-45"
+                    />
+                </div>
             )}
         </div>
     )

@@ -52,6 +52,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (body.mileage !== undefined) updateData.mileage = body.mileage ? Number(body.mileage) : null
         if (body.cost !== undefined) updateData.cost = body.cost ? Number(body.cost) : null
         if (body.parentId !== undefined) updateData.parentId = body.parentId || null
+        if (body.postId !== undefined) updateData.postId = body.postId || null
 
         const node = await prisma.historyNode.update({
             where: { id: nodeId },

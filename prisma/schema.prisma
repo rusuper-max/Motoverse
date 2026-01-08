@@ -3,14 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider  = "postgresql"
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   email         String    @unique
   username      String    @unique
-  passwordHash  String
+  passwordHash  String?
   name          String?
   bio           String?
   avatar        String?
@@ -101,6 +101,8 @@ model Car {
   nickname      String?
   description   String?
   image         String?
+  images        String[]  @default([]) // Gallery
+  thumbnail     String?   // Selected thumbnail
   mileage       Int?
   // Engine specs - either from EngineConfig or custom
   engine        String?   // display name like "2.0 TFSI" or custom entry

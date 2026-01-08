@@ -23,6 +23,7 @@ interface HistoryFlowNodeProps {
         mileage: number | null
         cost: number | null
         isLocked: boolean
+        post?: { id: string; title: string } | null
     }
     selected?: boolean
 }
@@ -56,6 +57,7 @@ function HistoryFlowNode({ data, selected }: HistoryFlowNodeProps) {
                     </div>
                     <span className="text-xs text-zinc-500">{nodeType.label}</span>
                     {data.isLocked && <span className="text-xs">🔒</span>}
+                    {data.post && <span className="text-xs ml-auto" title="Linked to Blog Post">📝</span>}
                 </div>
 
                 {/* Title */}

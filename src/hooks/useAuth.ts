@@ -16,69 +16,105 @@ interface AuthState {
   loading: boolean
 }
 
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+
+export interface AuthUser {
+  id: string
+  email: string
+  username: string
+  name?: string | null
+  avatar?: string | null
+}
+
+interface AuthState {
+  authenticated: boolean
+  user: AuthUser | null
+  loading: boolean
+}
+
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     authenticated: false,
     user: null,
     loading: true,
   })
-  const alive = useRef(true)
+  const router = useRouter()
+  const supabase = createClient()
 
-  const refresh = useCallback(async () => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
+      // We can use the existing status endpoint which now uses the verified Supabase session
       const res = await fetch('/api/auth/status', {
         cache: 'no-store',
-        credentials: 'include',
-        headers: { 'x-no-cache': String(Date.now()) },
+        headers: { 'x-no-cache': String(Date.now()) }
       })
-      const data = await res.json().catch(() => ({}))
-      if (!alive.current) return
-      setState({
-        authenticated: !!data?.authenticated,
-        user: data?.user ?? null,
-        loading: false,
-      })
-    } catch {
-      if (!alive.current) return
-      setState({ authenticated: false, user: null, loading: false })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.user) {
+          return data.user
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch profile', e)
     }
-  }, [])
-
-  const logout = useCallback(async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      })
-      setState({ authenticated: false, user: null, loading: false })
-      // Dispatch custom event so other components can react
-      window.dispatchEvent(new CustomEvent('MOTOVERSE_AUTH_CHANGED'))
-    } catch {
-      // Still clear local state even if request fails
-      setState({ authenticated: false, user: null, loading: false })
-    }
+    return null
   }, [])
 
   useEffect(() => {
-    alive.current = true
-    refresh()
+    let mounted = true
 
-    // Listen for auth changes from other tabs/components
-    const onChanged = () => refresh()
-    const onFocus = () => refresh()
-    const onVis = () => document.visibilityState === 'visible' && refresh()
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+      if (session?.user) {
+        fetchProfile(session.user.id).then(user => {
+          if (mounted) setState({ authenticated: !!user, user, loading: false })
+        })
+      } else {
+        setState({ authenticated: false, user: null, loading: false })
+      }
+    })
 
-    window.addEventListener('MOTOVERSE_AUTH_CHANGED', onChanged)
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onVis)
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          const user = await fetchProfile(session.user.id)
+          if (mounted) setState({ authenticated: !!user, user, loading: false })
+        }
+      } else if (event === 'SIGNED_OUT') {
+        if (mounted) setState({ authenticated: false, user: null, loading: false })
+        router.refresh()
+      }
+    })
 
     return () => {
-      alive.current = false
-      window.removeEventListener('MOTOVERSE_AUTH_CHANGED', onChanged)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVis)
+      mounted = false
+      subscription.unsubscribe()
     }
-  }, [refresh])
+  }, [supabase, fetchProfile, router])
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut()
+    // State update handled by onAuthStateChange
+  }, [supabase])
+
+  const refresh = useCallback(async () => {
+    // Manual refresh if needed
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      const user = await fetchProfile(session.user.id)
+      setState({ authenticated: !!user, user, loading: false })
+    } else {
+      setState({ authenticated: false, user: null, loading: false })
+    }
+  }, [supabase, fetchProfile])
 
   return {
     ...state,

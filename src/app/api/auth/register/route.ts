@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
 import {
-  createUser,
-  signSession,
   isEmailAvailable,
   isUsernameAvailable,
   isValidEmail,
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     // Validate username format
     if (!isValidUsername(username)) {
       return NextResponse.json(
-        { error: 'invalid_username', message: 'Username must be 3-20 characters, start with a letter, and contain only letters, numbers, and underscores' },
+        { error: 'invalid_username', message: 'Username must be 3-20 characters, letter start, alphanumeric/underscores' },
         { status: 400 }
       )
     }
@@ -56,16 +56,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // Check if email is available
-    const emailAvailable = await isEmailAvailable(email)
-    if (!emailAvailable) {
-      return NextResponse.json(
-        { error: 'email_taken', message: 'An account with this email already exists' },
-        { status: 409 }
-      )
-    }
-
-    // Check if username is available
+    // Check if username is available (in our public table)
     const usernameAvailable = await isUsernameAvailable(username)
     if (!usernameAvailable) {
       return NextResponse.json(
@@ -74,20 +65,69 @@ export async function POST(req: Request) {
       )
     }
 
-    // Create user
-    const user = await createUser({ email, username, password, name })
+    // Initialize Supabase client
+    const supabase = await createClient()
 
-    // Sign session
-    const cookie = await signSession(user)
+    // Sign up with Supabase
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username,
+          name,
+        },
+      },
+    })
 
-    const res = NextResponse.json(
-      { success: true, user: { id: user.id, email: user.email, username: user.username, name: user.name } },
-      { status: 201 }
-    )
-    res.headers.set('Set-Cookie', cookie)
-    res.headers.set('Cache-Control', 'no-store')
+    if (authError) {
+      console.error('Supabase signUp error:', authError)
+      if (authError.message.includes('already registered')) {
+        return NextResponse.json(
+          { error: 'email_taken', message: 'An account with this email already exists' },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'registration_failed', message: authError.message },
+        { status: 400 }
+      )
+    }
 
-    return res
+    if (!authData.user) {
+      return NextResponse.json(
+        { error: 'registration_failed', message: 'No user returned from provider' },
+        { status: 500 }
+      )
+    }
+
+    // Create public user profile in Prisma
+    try {
+      const user = await prisma.user.create({
+        data: {
+          id: authData.user.id, // Sync IDs
+          email: email.toLowerCase(),
+          username: username.toLowerCase(),
+          name: name || null,
+          // passwordHash is optional now
+        }
+      })
+
+      return NextResponse.json(
+        { success: true, user: { id: user.id, email: user.email, username: user.username, name: user.name } },
+        { status: 201 }
+      )
+    } catch (dbError) {
+      console.error('Failed to create public profile:', dbError)
+      // Rollback? We can't easily delete from Auth here without admin key. 
+      // But preventing login effectively "fails" it for current session.
+      // User exists in Auth but not Public. This is a known drift issue.
+      return NextResponse.json(
+        { error: 'registration_failed', message: 'Failed to create user profile' },
+        { status: 500 }
+      )
+    }
+
   } catch (error) {
     console.error('[auth.register] failed', error)
     return NextResponse.json(

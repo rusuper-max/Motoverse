@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { authenticateUser, signSession, isValidEmail } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
+import { isValidEmail } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,26 +32,39 @@ export async function POST(req: Request) {
       )
     }
 
-    // Authenticate user
-    const user = await authenticateUser(email, password)
-    if (!user) {
+    const supabase = await createClient()
+
+    // Sign in with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
       return NextResponse.json(
         { error: 'invalid_credentials', message: 'Invalid email or password' },
         { status: 401 }
       )
     }
 
-    // Sign session
-    const cookie = await signSession(user)
+    // Get public user data
+    const user = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: { id: true, email: true, username: true, name: true }
+    })
 
-    const res = NextResponse.json(
-      { success: true, user: { id: user.id, email: user.email, username: user.username, name: user.name } },
+    if (!user) {
+      // Drift detected: Auth exists but Public profile missing
+      return NextResponse.json(
+        { error: 'profile_missing', message: 'User profile not found. Please contact support.' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(
+      { success: true, user },
       { status: 200 }
     )
-    res.headers.set('Set-Cookie', cookie)
-    res.headers.set('Cache-Control', 'no-store')
-
-    return res
   } catch (error) {
     console.error('[auth.login] failed', error)
     return NextResponse.json(

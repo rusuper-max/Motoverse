@@ -85,22 +85,35 @@ export async function signSession(user: SessionUser, days = 30): Promise<string>
 }
 
 // Get session user from request
+// Get session user from request
 export async function getSessionUser(req?: Request): Promise<SessionUser | null> {
-  let cookieHeader: string | null = req?.headers?.get('cookie') ?? null
+  try {
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
 
-  // Server component fallback: use next/headers
-  if (!cookieHeader) {
-    try {
-      const { headers } = await import('next/headers')
-      const h = await headers()
-      cookieHeader = h.get('cookie')
-    } catch {
-      cookieHeader = null
-    }
+    const { data: { user: authUser }, error } = await supabase.auth.getUser()
+
+    if (error || !authUser) return null
+
+    // Fetch public profile
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        avatar: true
+      }
+    })
+
+    if (!user) return null
+
+    return user
+  } catch (error) {
+    console.error('getSessionUser failed', error)
+    return null
   }
-
-  const token = readCookieFromHeader(cookieHeader, SESSION_COOKIE_NAME)
-  return userFromToken(token)
 }
 
 // Get current user from session (for use in components/pages)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MessageCircle, Heart, Share2, Calendar, User, Car } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -27,10 +27,12 @@ interface Post {
     car: {
         id: string
         year: number
-        model: {
-            name: string
-            make: { name: string }
-        }
+        generation: {
+            model: {
+                name: string
+                make: { name: string }
+            }
+        } | null
     } | null
     _count: {
         comments: number
@@ -53,6 +55,7 @@ interface Comment {
 export default function PostDetailPage() {
     const params = useParams()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const locale = params.locale as Locale
     const postId = params.id as string
     const { user } = useAuth()
@@ -165,13 +168,21 @@ export default function PostDetailPage() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6">
                 {/* Back Link */}
                 <div className="mb-8">
-                    {post.car ? (
+                    {searchParams.get('from') === 'history' && post.car ? (
+                        <Link
+                            href={`/${locale}/garage/${post.car.id}/history`}
+                            className="text-zinc-400 hover:text-white text-sm inline-flex items-center gap-1 transition-colors"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to History
+                        </Link>
+                    ) : post.car && post.car.generation ? (
                         <Link
                             href={`/${locale}/garage/${post.car.id}`}
                             className="text-zinc-400 hover:text-white text-sm inline-flex items-center gap-1 transition-colors"
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Back to {post.car.model.make.name} {post.car.model.name}
+                            Back to {post.car.generation.model.make.name} {post.car.generation.model.name}
                         </Link>
                     ) : (
                         <Link
@@ -217,11 +228,11 @@ export default function PostDetailPage() {
                                 </div>
                             </div>
 
-                            {post.car && (
+                            {post.car && post.car.generation && (
                                 <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 rounded-lg border border-zinc-700">
                                     <Car className="w-4 h-4 text-zinc-400" />
                                     <span className="text-sm text-zinc-300">
-                                        {post.car.year} {post.car.model.make.name} {post.car.model.name}
+                                        {post.car.year} {post.car.generation.model.make.name} {post.car.generation.model.name}
                                     </span>
                                 </div>
                             )}

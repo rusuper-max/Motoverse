@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Image as ImageIcon, Send, Wrench, Gauge, Car, MapPin, FileText, ChevronLeft, Save } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import ImageUpload from '@/components/ui/ImageUpload'
 import RichTextEditor from '@/components/blog/RichTextEditor'
 import { useAuth } from '@/hooks/useAuth'
 import { Locale } from '@/i18n/config'
@@ -33,6 +34,7 @@ export default function CreatePostPage() {
     const [category, setCategory] = useState('maintenance')
     const [mileage, setMileage] = useState('')
     const [cost, setCost] = useState('')
+    const [thumbnail, setThumbnail] = useState<string[]>([])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -49,6 +51,7 @@ export default function CreatePostPage() {
                     category,
                     mileage: mileage || null,
                     cost: cost || null,
+                    thumbnail: thumbnail.length > 0 ? thumbnail[0] : null,
                 }),
             })
 

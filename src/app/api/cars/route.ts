@@ -66,7 +66,9 @@ export async function POST(req: Request) {
       year,
       nickname,
       description,
-      image,
+      image, // Legacy field
+      images, // New gallery field
+      thumbnail, // New thumbnail field
       mileage,
       // Custom engine specs (used when no engineConfigId or for overrides)
       engine,
@@ -145,7 +147,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // Create the car - custom specs override engine config specs
+    // Determine primary image
+    const primaryImage = image || thumbnail || (images && images.length > 0 ? images[0] : null)
+
+    // Create the car
     const car = await prisma.car.create({
       data: {
         ownerId: user.id,
@@ -154,7 +159,9 @@ export async function POST(req: Request) {
         year,
         nickname: nickname || null,
         description: description || null,
-        image: image || null,
+        image: primaryImage,
+        images: images || [],
+        thumbnail: thumbnail || primaryImage,
         mileage: mileage ? parseInt(mileage, 10) : null,
         engine: engine || engineSpecs.engine || null,
         transmission: transmission || engineSpecs.transmission || null,

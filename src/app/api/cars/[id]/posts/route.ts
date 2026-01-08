@@ -71,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         // Validate required fields
-        const { title, content, category, mileage, cost, images } = body
+        const { title, content, category, mileage, cost, images, thumbnail } = body
 
         if (!title || !content || !category) {
             return NextResponse.json(
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 mileage: mileage ? parseInt(mileage) : null,
                 cost: cost ? parseFloat(cost) : null,
                 images: images ? JSON.stringify(images) : null,
+                thumbnail: thumbnail || null, // Create thumbnail
                 authorId: user.id,
                 carId,
             },

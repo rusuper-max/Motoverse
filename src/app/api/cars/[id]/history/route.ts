@@ -25,6 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     select: {
                         id: true,
                         title: true,
+                        thumbnail: true,
                     },
                 },
             },
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         // Validate required fields
-        const { type, title, description, date, mileage, cost, postId } = body
+        const { type, title, description, date, mileage, cost, postId, parentId } = body
 
         if (!type || !title || !date) {
             return NextResponse.json(
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 mileage: mileage ? Number(mileage) : null,
                 cost: cost ? Number(cost) : null,
                 postId: postId || null,
+                parentId: parentId || null,
             },
             include: {
                 author: {
