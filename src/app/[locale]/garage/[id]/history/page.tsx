@@ -74,6 +74,7 @@ export default function HistoryPage() {
     const [edges, setEdges, onEdgesChange] = useEdgesState<any>([])
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null)
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     const isOwner = user?.id === car?.ownerId
 
@@ -180,6 +181,31 @@ export default function HistoryPage() {
             setSaving(false)
         }
     }
+
+    // Autosave single node position when dragging stops
+    const onNodeDragStop = useCallback((_event: any, node: any) => {
+        if (!isOwner) return
+
+        // Debounce to avoid too many API calls
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+        }
+
+        saveTimeoutRef.current = setTimeout(async () => {
+            try {
+                await fetch(`/api/cars/${carId}/history/${node.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        positionX: node.position.x,
+                        positionY: node.position.y,
+                    }),
+                })
+            } catch (err) {
+                console.error('Failed to autosave position:', err)
+            }
+        }, 300)
+    }, [carId, isOwner])
 
     const handleContextMenu = useCallback((event: any, node?: any) => {
         event.preventDefault()
@@ -306,7 +332,7 @@ export default function HistoryPage() {
                         <li>• Drag nodes to reposition</li>
                         <li>• Right-click for options</li>
                         <li>• Scroll to zoom</li>
-                        <li>• Save layout to keep positions</li>
+                        <li>• Positions save automatically</li>
                     </ul>
                 </div>
             </div>
@@ -319,6 +345,7 @@ export default function HistoryPage() {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    onNodeDragStop={onNodeDragStop}
                     onPaneClick={handlePaneClick}
                     onNodeContextMenu={handleContextMenu}
                     onPaneContextMenu={handleContextMenu}
