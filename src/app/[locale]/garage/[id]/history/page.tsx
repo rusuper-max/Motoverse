@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css'
 import { ArrowLeft, Car, User, Calendar, Save, Loader2 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import HistoryFlowNode from '@/components/flow/HistoryFlowNode'
+import DeletableEdge from '@/components/flow/DeletableEdge'
 import FlowContextMenu from '@/components/flow/FlowContextMenu'
 import AddNodeModal from '@/components/AddNodeModal'
 import { Locale } from '@/i18n/config'
@@ -56,6 +57,11 @@ const nodeTypes = {
     historyNode: HistoryFlowNode,
 }
 
+// Custom edge types with delete button
+const edgeTypes = {
+    deletable: DeletableEdge,
+}
+
 export default function HistoryPage() {
     const params = useParams()
     const locale = params.locale as Locale
@@ -66,6 +72,8 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
+    const [hasChanges, setHasChanges] = useState(false)
+    const [pendingConnection, setPendingConnection] = useState<{ x: number; y: number } | null>(null)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,12 +187,14 @@ export default function HistoryPage() {
             console.error('Failed to save positions:', err)
         } finally {
             setSaving(false)
+            setHasChanges(false)
         }
     }
 
     // Autosave single node position when dragging stops
     const onNodeDragStop = useCallback((_event: any, node: any) => {
         if (!isOwner) return
+        setHasChanges(true)
 
         // Debounce to avoid too many API calls
         if (saveTimeoutRef.current) {
@@ -201,11 +211,33 @@ export default function HistoryPage() {
                         positionY: node.position.y,
                     }),
                 })
+                setHasChanges(false)
             } catch (err) {
                 console.error('Failed to autosave position:', err)
             }
-        }, 300)
+        }, 500)
     }, [carId, isOwner])
+
+    // Delete an edge
+    const deleteEdge = useCallback((edgeId: string) => {
+        setEdges((eds: any) => eds.filter((e: any) => e.id !== edgeId))
+        setHasChanges(true)
+    }, [setEdges])
+
+    // When dragging from a handle and releasing on empty canvas, open add modal
+    const onConnectEnd = useCallback((event: any) => {
+        if (!isOwner) return
+
+        // Check if we dropped on empty canvas (not on a node)
+        const targetIsPane = event.target?.classList?.contains('react-flow__pane')
+        if (targetIsPane) {
+            const bounds = reactFlowWrapper.current?.getBoundingClientRect()
+            if (bounds) {
+                setPendingConnection({ x: event.clientX - bounds.left, y: event.clientY - bounds.top })
+                setShowAddModal(true)
+            }
+        }
+    }, [isOwner])
 
     const handleContextMenu = useCallback((event: any, node?: any) => {
         event.preventDefault()
@@ -341,20 +373,22 @@ export default function HistoryPage() {
             <div ref={reactFlowWrapper} className="flex-1 bg-zinc-950">
                 <ReactFlow
                     nodes={nodes}
-                    edges={edges}
+                    edges={edges.map((e: any) => ({ ...e, data: { ...e.data, onDelete: deleteEdge } }))}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    onConnectEnd={onConnectEnd}
                     onNodeDragStop={onNodeDragStop}
                     onPaneClick={handlePaneClick}
                     onNodeContextMenu={handleContextMenu}
                     onPaneContextMenu={handleContextMenu}
                     nodeTypes={nodeTypes}
+                    edgeTypes={edgeTypes}
                     fitView
                     minZoom={0.2}
                     maxZoom={2}
                     defaultEdgeOptions={{
-                        type: 'smoothstep',
+                        type: 'deletable',
                         style: { stroke: '#52525b', strokeWidth: 2 },
                     }}
                     proOptions={{ hideAttribution: true }}
@@ -376,6 +410,24 @@ export default function HistoryPage() {
                             {nodes.length} node{nodes.length !== 1 ? 's' : ''}
                         </span>
                     </Panel>
+
+                    {/* Floating Save Button when changes detected */}
+                    {hasChanges && isOwner && (
+                        <Panel position="top-center">
+                            <button
+                                onClick={savePositions}
+                                disabled={saving}
+                                className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg shadow-lg shadow-orange-500/30 transition-all animate-pulse"
+                            >
+                                {saving ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <Save className="w-5 h-5" />
+                                )}
+                                {saving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </Panel>
+                    )}
                 </ReactFlow>
             </div>
 
