@@ -15,7 +15,7 @@ import {
     Panel,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ArrowLeft, Car, User, Calendar, Save, Loader2 } from 'lucide-react'
+import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import HistoryFlowNode from '@/components/flow/HistoryFlowNode'
 import DeletableEdge from '@/components/flow/DeletableEdge'
@@ -73,6 +73,9 @@ export default function HistoryPage() {
     const [saving, setSaving] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
+    const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+    const [showCostBreakdown, setShowCostBreakdown] = useState(false)
+    const [rawNodes, setRawNodes] = useState<HistoryNodeData[]>([])
     const [pendingConnection, setPendingConnection] = useState<{ x: number; y: number } | null>(null)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
 
@@ -156,6 +159,7 @@ export default function HistoryPage() {
 
                 setNodes(flowNodes)
                 setEdges(flowEdges)
+                setRawNodes(historyNodes)
             }
         } catch { /* ignore */ }
     }
@@ -196,6 +200,9 @@ export default function HistoryPage() {
         if (!isOwner) return
         setHasChanges(true)
 
+        // Only auto-save if enabled
+        if (!autoSaveEnabled) return
+
         // Debounce to avoid too many API calls
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current)
@@ -216,7 +223,7 @@ export default function HistoryPage() {
                 console.error('Failed to autosave position:', err)
             }
         }, 500)
-    }, [carId, isOwner])
+    }, [carId, isOwner, autoSaveEnabled])
 
     // Delete an edge
     const deleteEdge = useCallback((edgeId: string) => {
@@ -275,6 +282,27 @@ export default function HistoryPage() {
         }
         setContextMenu(null)
     }, [contextMenu, carId, setNodes, setEdges])
+
+    // Calculate costs by category
+    const costsByCategory = rawNodes.reduce((acc, node) => {
+        if (node.cost) {
+            const category = node.type
+            acc[category] = (acc[category] || 0) + node.cost
+        }
+        return acc
+    }, {} as Record<string, number>)
+
+    const totalCost = Object.values(costsByCategory).reduce((sum, cost) => sum + cost, 0)
+
+    const categoryLabels: Record<string, string> = {
+        purchase: 'Purchase',
+        mod_engine: 'Engine Mods',
+        mod_suspension: 'Suspension',
+        mod_exterior: 'Exterior',
+        maintenance: 'Maintenance',
+        trip: 'Road Trips',
+        custom: 'Other',
+    }
 
     if (loading) {
         return (
@@ -338,21 +366,61 @@ export default function HistoryPage() {
                         </div>
                     </div>
 
+                    {/* Cost Summary */}
+                    {totalCost > 0 && (
+                        <div className="bg-zinc-800/50 rounded-xl p-3 border border-zinc-700">
+                            <button
+                                onClick={() => setShowCostBreakdown(!showCostBreakdown)}
+                                className="w-full flex items-center justify-between text-left"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4 text-green-400" />
+                                    <span className="text-sm text-zinc-300">Total Invested</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg font-bold text-green-400">€{totalCost.toLocaleString()}</span>
+                                    {showCostBreakdown ? (
+                                        <ChevronUp className="w-4 h-4 text-zinc-500" />
+                                    ) : (
+                                        <ChevronDown className="w-4 h-4 text-zinc-500" />
+                                    )}
+                                </div>
+                            </button>
+
+                            {showCostBreakdown && (
+                                <div className="mt-3 pt-3 border-t border-zinc-700 space-y-2">
+                                    {Object.entries(costsByCategory).map(([category, cost]) => (
+                                        <div key={category} className="flex items-center justify-between text-xs">
+                                            <span className="text-zinc-400">{categoryLabels[category] || category}</span>
+                                            <span className="text-zinc-300">€{cost.toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Add Event Button */}
                     {isOwner && (
                         <>
                             <Button onClick={() => setShowAddModal(true)} className="w-full">
                                 Add Event
                             </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={savePositions}
-                                disabled={saving}
-                                className="w-full"
-                            >
-                                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                                Save Layout
-                            </Button>
+
+                            {/* Autosave Toggle */}
+                            <div className="flex items-center justify-between bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700">
+                                <span className="text-sm text-zinc-400">Autosave</span>
+                                <button
+                                    onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
+                                    className={`w-10 h-5 rounded-full transition-colors relative ${autoSaveEnabled ? 'bg-green-500' : 'bg-zinc-600'
+                                        }`}
+                                >
+                                    <span
+                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${autoSaveEnabled ? 'left-5' : 'left-0.5'
+                                            }`}
+                                    />
+                                </button>
+                            </div>
                         </>
                     )}
                 </div>
