@@ -179,6 +179,7 @@ model Post {
   title         String
   content       String
   images        String?   // JSON array of image URLs
+  thumbnail     String?   // Custom thumbnail URL (or use first image)
   category      String    // maintenance, modification, journey, review, other
   mileage       Int?      // Mileage at time of post
   cost          Float?    // Cost tracking (optional)
