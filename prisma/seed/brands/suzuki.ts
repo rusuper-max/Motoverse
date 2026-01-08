@@ -17,8 +17,8 @@ export const suzukiGenerations: BrandGenerations = {
             bodyType: 'hatchback',
             engines: [
                 { name: '1.0L G10', displacement: '1.0L', fuelType: 'petrol', horsepower: 50, torque: 75, transmission: 'manual', drivetrain: 'fwd' },
-                { name: '1.3L G13A', displacement: '1.3L', fuelType: 'petrol', horsepower: 70, torque: 103, transmission: 'manual', drivetrain: 'fwd' },
-                { name: '1.0L GTi', displacement: '1.0L', fuelType: 'petrol', horsepower: 73, torque: 87, transmission: 'manual', drivetrain: 'fwd' },
+                { name: '1.3L G13A', displacement: '1.3L', fuelType: 'petrol', horsepower: 67, torque: 100, transmission: 'manual', drivetrain: 'fwd' },
+                { name: '1.3L G13B GTi', displacement: '1.3L', fuelType: 'petrol', horsepower: 101, torque: 118, transmission: 'manual', drivetrain: 'fwd' },
             ],
         },
         {
@@ -29,8 +29,8 @@ export const suzukiGenerations: BrandGenerations = {
             bodyType: 'hatchback',
             engines: [
                 { name: '1.0L G10', displacement: '1.0L', fuelType: 'petrol', horsepower: 53, torque: 78, transmission: 'manual', drivetrain: 'fwd' },
-                { name: '1.3L G13B', displacement: '1.3L', fuelType: 'petrol', horsepower: 72, torque: 106, transmission: 'manual', drivetrain: 'fwd' },
-                { name: '1.3L GTi', displacement: '1.3L', fuelType: 'petrol', horsepower: 101, torque: 118, transmission: 'manual', drivetrain: 'fwd' },
+                { name: '1.3L G13BA', displacement: '1.3L', fuelType: 'petrol', horsepower: 70, torque: 105, transmission: 'manual', drivetrain: 'fwd' },
+                { name: '1.3L G13B GTi', displacement: '1.3L', fuelType: 'petrol', horsepower: 101, torque: 118, transmission: 'manual', drivetrain: 'fwd' },
             ],
         },
         {
@@ -119,8 +119,8 @@ export const suzukiGenerations: BrandGenerations = {
             bodyType: 'suv',
             engines: [
                 { name: '1.0L F10A', displacement: '1.0L', fuelType: 'petrol', horsepower: 45, torque: 72, transmission: 'manual', drivetrain: '4wd' },
-                { name: '1.3L G13A', displacement: '1.3L', fuelType: 'petrol', horsepower: 70, torque: 103, transmission: 'manual', drivetrain: '4wd' },
-                { name: '1.3L G13BA', displacement: '1.3L', fuelType: 'petrol', horsepower: 80, torque: 110, transmission: 'manual', drivetrain: '4wd' },
+                { name: '1.3L G13A', displacement: '1.3L', fuelType: 'petrol', horsepower: 67, torque: 100, transmission: 'manual', drivetrain: '4wd' },
+                { name: '1.3L G13BA', displacement: '1.3L', fuelType: 'petrol', horsepower: 70, torque: 105, transmission: 'manual', drivetrain: '4wd' },
             ],
         },
         {
