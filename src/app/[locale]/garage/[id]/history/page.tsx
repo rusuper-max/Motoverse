@@ -376,7 +376,9 @@ export default function HistoryPage() {
         if (!isOwner) return
 
         // Check if we dropped on empty canvas (not on a node)
-        const targetIsPane = event.target?.classList?.contains('react-flow__pane')
+        const target = event.target
+        const targetIsPane =
+            target instanceof HTMLElement && target.classList.contains('react-flow__pane')
         if (targetIsPane) {
             const bounds = reactFlowWrapper.current?.getBoundingClientRect()
             if (bounds) {
