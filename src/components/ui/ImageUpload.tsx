@@ -31,6 +31,13 @@ export default function ImageUpload({
             const files = e.target.files
             if (!files || files.length === 0) return
 
+            // Check if user is authenticated
+            if (!user?.id) {
+                console.error('Upload failed: User not authenticated')
+                alert('You must be logged in to upload images.')
+                return
+            }
+
             setIsUploading(true)
             const newUrls: string[] = []
 
@@ -39,27 +46,35 @@ export default function ImageUpload({
                 // Path: {userId}/{folderPath}/{timestamp}-{filename}
                 const fileExt = file.name.split('.').pop()
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `${user?.id}/${folderPath}/${fileName}`
+                const filePath = `${user.id}/${folderPath}/${fileName}`
 
-                const { error: uploadError } = await supabase.storage
+                console.log('Uploading to:', bucket, filePath)
+
+                const { data, error: uploadError } = await supabase.storage
                     .from(bucket)
                     .upload(filePath, file)
 
                 if (uploadError) {
+                    console.error('Supabase upload error:', uploadError)
                     throw uploadError
                 }
+
+                console.log('Upload success:', data)
 
                 const { data: { publicUrl } } = supabase.storage
                     .from(bucket)
                     .getPublicUrl(filePath)
 
+                console.log('Public URL:', publicUrl)
                 newUrls.push(publicUrl)
             }
 
             onChange([...value, ...newUrls])
-        } catch (error) {
+        } catch (error: unknown) {
+            const err = error as { message?: string; statusCode?: number }
             console.error('Error uploading image:', error)
-            alert('Failed to upload image. Please try again.')
+            console.error('Error details:', JSON.stringify(error, null, 2))
+            alert(`Failed to upload image: ${err?.message || 'Unknown error'}`)
         } finally {
             setIsUploading(false)
         }
