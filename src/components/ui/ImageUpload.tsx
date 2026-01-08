@@ -19,7 +19,7 @@ export default function ImageUpload({
     onChange,
     onRemove,
     maxFiles = 5,
-    bucket = 'motoverse-photos',
+    bucket = 'motoverse_photos',
     folderPath = 'uploads'
 }: ImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false)

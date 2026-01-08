@@ -36,9 +36,9 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (res.ok) {
-        // Login successful, redirect to homepage or dashboard
-        router.push(`/${locale}`)
+        // Login successful, refresh server components then redirect
         router.refresh()
+        router.push(`/${locale}`)
       } else {
         // Handle specific errors
         switch (data.error) {

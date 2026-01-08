@@ -18,15 +18,23 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [name, setName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
+  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
     setErrorMessage('')
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match") // TODO: Add translation key for this
+      setStatus('error')
+      return
+    }
 
     try {
       const res = await fetch('/api/auth/register', {
@@ -73,6 +81,25 @@ export default function RegisterPage() {
     }
   }
 
+  const handleResend = async () => {
+    setResendStatus('loading')
+    try {
+      const res = await fetch('/api/auth/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      if (res.ok) {
+        setResendStatus('success')
+      } else {
+        setResendStatus('error')
+      }
+    } catch {
+      setResendStatus('error')
+    }
+  }
+
   if (status === 'success') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
@@ -86,7 +113,20 @@ export default function RegisterPage() {
             We've sent a confirmation link to <span className="text-white font-medium">{email}</span>.
             Please check your inbox (and spam folder) to verify your account.
           </p>
-          <div className="pt-4">
+
+          <div className="pt-4 space-y-3">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleResend}
+              disabled={resendStatus === 'loading' || resendStatus === 'success'}
+            >
+              {resendStatus === 'loading' ? 'Sending...' :
+                resendStatus === 'success' ? 'Email Sent!' :
+                  resendStatus === 'error' ? 'Failed to send' :
+                    'Resend Email'}
+            </Button>
+
             <Link href={`/${locale}/login`}>
               <Button size="lg" className="w-full">
                 Return to Login
@@ -181,6 +221,26 @@ export default function RegisterPage() {
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div className="space-y-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-300">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="block w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-3 pr-12 text-white placeholder-zinc-500 focus:border-orange-500 focus:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all"
+              />
             </div>
           </div>
 
