@@ -208,6 +208,7 @@ export async function authenticateUser(email: string, password: string): Promise
   })
 
   if (!user) return null
+  if (!user.passwordHash) return null
 
   const isValid = await verifyPassword(password, user.passwordHash)
   if (!isValid) return null

@@ -15,6 +15,7 @@ import {
     type Node,
     type Edge,
     type Connection,
+    type OnNodeDrag,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp, FileText } from 'lucide-react'
@@ -333,7 +334,7 @@ export default function HistoryPage() {
     }
 
     // Autosave single node position when dragging stops
-    const onNodeDragStop = useCallback((_event: MouseEvent | TouchEvent, node: HistoryFlowNode) => {
+    const onNodeDragStop: OnNodeDrag<HistoryFlowNode> = useCallback((_event, node) => {
         if (!isOwner) return
         setHasChanges(true)
 
@@ -397,6 +398,16 @@ export default function HistoryPage() {
             x: event.clientX,
             y: event.clientY,
             nodeId: node?.id,
+        })
+    }, [isOwner])
+
+    const handlePaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
+        event.preventDefault()
+        if (!isOwner) return
+
+        setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
         })
     }, [isOwner])
 
@@ -665,7 +676,7 @@ export default function HistoryPage() {
                     onPaneClick={handlePaneClick}
                     onNodeClick={onNodeClick}
                     onNodeContextMenu={handleContextMenu}
-                    onPaneContextMenu={handleContextMenu}
+                    onPaneContextMenu={handlePaneContextMenu}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
                     fitView
