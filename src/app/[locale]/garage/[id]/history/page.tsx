@@ -10,9 +10,11 @@ import {
     MiniMap,
     useNodesState,
     useEdgesState,
-    addEdge,
     BackgroundVariant,
     Panel,
+    type Node,
+    type Edge,
+    type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp, FileText } from 'lucide-react'
@@ -58,11 +60,37 @@ interface HistoryNodeData {
     } | null
 }
 
+interface HistoryFlowNodeData {
+    type: string
+    title: string
+    description: string | null
+    date: string
+    mileage: number | null
+    cost: number | null
+    isLocked: boolean
+    post?: {
+        id: string
+        title: string
+        thumbnail: string | null
+    } | null
+}
+
+interface HistoryEdgeData {
+    onDelete: (edgeId: string) => void
+    onInsert: (edgeId: string, sourceId: string, targetId: string) => void
+    source: string
+    target: string
+}
+
 interface PopupData {
     x: number
     y: number
     post: { id: string; title: string; thumbnail: string | null }
 }
+
+type HistoryFlowNode = Node<HistoryFlowNodeData>
+type HistoryFlowEdge = Edge<HistoryEdgeData>
+type CreatedNode = { id: string }
 
 // Custom node types for React Flow
 const nodeTypes = {
@@ -72,6 +100,15 @@ const nodeTypes = {
 // Custom edge types with delete button
 const edgeTypes = {
     deletable: DeletableEdge,
+}
+
+const getEventClientPoint = (event: MouseEvent | TouchEvent) => {
+    if ('clientX' in event) {
+        return { x: event.clientX, y: event.clientY }
+    }
+
+    const touch = event.changedTouches[0]
+    return { x: touch?.clientX ?? 0, y: touch?.clientY ?? 0 }
 }
 
 export default function HistoryPage() {
@@ -94,10 +131,8 @@ export default function HistoryPage() {
     const [insertionContext, setInsertionContext] = useState<{ parentId: string; childId: string } | null>(null)
     const [popupData, setPopupData] = useState<PopupData | null>(null)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [nodes, setNodes, onNodesChange] = useNodesState<any>([])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [edges, setEdges, onEdgesChange] = useEdgesState<any>([])
+    const [nodes, setNodes, onNodesChange] = useNodesState<HistoryFlowNode>([])
+    const [edges, setEdges, onEdgesChange] = useEdgesState<HistoryFlowEdge>([])
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null)
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -128,7 +163,7 @@ export default function HistoryPage() {
                 const historyNodes: HistoryNodeData[] = data.nodes || []
 
                 // Convert to React Flow nodes
-                const flowNodes = historyNodes.map((node, index) => ({
+                const flowNodes: HistoryFlowNode[] = historyNodes.map((node, index) => ({
                     id: node.id,
                     type: 'historyNode' as const,
                     position: {
@@ -148,7 +183,7 @@ export default function HistoryPage() {
                 }))
 
                 // Create edges from parent relationships
-                const flowEdges = historyNodes
+                const flowEdges: HistoryFlowEdge[] = historyNodes
                     .filter(node => node.parentId)
                     .map(node => ({
                         id: `e-${node.parentId}-${node.id}`,
@@ -179,19 +214,27 @@ export default function HistoryPage() {
     const deleteEdgeRef = useRef<(edgeId: string) => void>(() => { })
     const insertNodeRef = useRef<(edgeId: string, sourceId: string, targetId: string) => void>(() => { })
 
-    const onConnect = useCallback(async (connection: any) => {
-        // Optimistic update
-        setEdges((eds: any) => addEdge({
-            ...connection,
+    const onConnect = useCallback(async (connection: Connection) => {
+        if (!connection.source || !connection.target) {
+            return
+        }
+
+        const newEdge: HistoryFlowEdge = {
+            id: `e-${connection.source}-${connection.target}`,
+            source: connection.source,
+            target: connection.target,
             type: 'deletable',
             style: { stroke: '#52525b', strokeWidth: 2 },
             data: {
                 onDelete: deleteEdgeRef.current,
                 onInsert: insertNodeRef.current,
                 source: connection.source,
-                target: connection.target
-            }
-        }, eds))
+                target: connection.target,
+            },
+        }
+
+        // Optimistic update
+        setEdges((eds) => [...eds, newEdge])
 
         // Persist to DB
         try {
@@ -214,11 +257,11 @@ export default function HistoryPage() {
     // Delete an edge
     const deleteEdge = useCallback(async (edgeId: string) => {
         // Find the edge to get the target node ID
-        const edgeToDelete = edges.find((e: any) => e.id === edgeId)
+        const edgeToDelete = edges.find((edge) => edge.id === edgeId)
         if (!edgeToDelete) return
 
         // Optimistic update
-        setEdges((eds: any) => eds.filter((e: any) => e.id !== edgeId))
+        setEdges((eds) => eds.filter((edge) => edge.id !== edgeId))
 
         // Persist to DB (set parentId to null)
         try {
@@ -255,7 +298,7 @@ export default function HistoryPage() {
         console.log('Saving positions for', nodes.length, 'nodes')
         try {
             const results = await Promise.all(
-                nodes.map(async (node: any) => {
+                nodes.map(async (node) => {
                     console.log('Saving node:', node.id, 'at', node.position.x, node.position.y)
                     const res = await fetch(`/api/cars/${carId}/history/${node.id}`, {
                         method: 'PATCH',
@@ -290,7 +333,7 @@ export default function HistoryPage() {
     }
 
     // Autosave single node position when dragging stops
-    const onNodeDragStop = useCallback((_event: any, node: any) => {
+    const onNodeDragStop = useCallback((_event: MouseEvent | TouchEvent, node: HistoryFlowNode) => {
         if (!isOwner) return
         setHasChanges(true)
 
@@ -329,7 +372,7 @@ export default function HistoryPage() {
 
 
     // When dragging from a handle and releasing on empty canvas, open add modal
-    const onConnectEnd = useCallback((event: any) => {
+    const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
         if (!isOwner) return
 
         // Check if we dropped on empty canvas (not on a node)
@@ -337,13 +380,14 @@ export default function HistoryPage() {
         if (targetIsPane) {
             const bounds = reactFlowWrapper.current?.getBoundingClientRect()
             if (bounds) {
-                setPendingConnection({ x: event.clientX - bounds.left, y: event.clientY - bounds.top })
+                const point = getEventClientPoint(event)
+                setPendingConnection({ x: point.x - bounds.left, y: point.y - bounds.top })
                 setShowAddModal(true)
             }
         }
     }, [isOwner])
 
-    const handleContextMenu = useCallback((event: any, node?: any) => {
+    const handleContextMenu = useCallback((event: React.MouseEvent, node?: HistoryFlowNode) => {
         event.preventDefault()
         if (!isOwner) return
 
@@ -372,8 +416,8 @@ export default function HistoryPage() {
                 method: 'DELETE',
             })
             if (res.ok) {
-                setNodes((nds: any) => nds.filter((n: any) => n.id !== contextMenu.nodeId))
-                setEdges((eds: any) => eds.filter((e: any) => e.source !== contextMenu.nodeId && e.target !== contextMenu.nodeId))
+                setNodes((nds) => nds.filter((node) => node.id !== contextMenu.nodeId))
+                setEdges((eds) => eds.filter((edge) => edge.source !== contextMenu.nodeId && edge.target !== contextMenu.nodeId))
                 // Also update rawNodes for cost calculation
                 setRawNodes(prev => prev.filter(n => n.id !== contextMenu.nodeId))
             }
@@ -392,7 +436,7 @@ export default function HistoryPage() {
         setContextMenu(null)
     }, [contextMenu, rawNodes])
 
-    const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    const onNodeClick = useCallback((event: React.MouseEvent, node: HistoryFlowNode) => {
         // If node has a linked post, show the popup near the node
         if (node.data.post) {
             // Calculate position relative to the viewport/container
@@ -438,7 +482,7 @@ export default function HistoryPage() {
         custom: 'Other',
     }
 
-    const handleNodeCreated = async (newNode?: any) => {
+    const handleNodeCreated = async (newNode?: CreatedNode | null) => {
         if (!newNode) {
             fetchNodes()
             return

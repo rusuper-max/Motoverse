@@ -8,7 +8,11 @@ interface AddNodeModalProps {
     carId: string
     parentId?: string | null
     onClose: () => void
-    onSuccess: (node?: any) => void
+    onSuccess: (node?: HistoryNodeResult | null) => void
+}
+
+type HistoryNodeResult = {
+    id: string
 }
 
 const NODE_TYPES = [

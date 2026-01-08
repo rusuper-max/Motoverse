@@ -549,21 +549,43 @@ function Tachometer({ rpm }: { rpm: number }) {
 }
 
 // Spark Effects
+type Spark = {
+  left: string
+  top: string
+  delay: string
+  duration: string
+}
+
+const getPseudoRandom = (seed: number) => {
+  const value = Math.sin(seed) * 10000
+  return value - Math.floor(value)
+}
+
 function SparkEffects() {
+  const sparks: Spark[] = Array.from({ length: 8 }, (_, index) => {
+    const base = index * 11.37
+    return {
+      left: `${10 + getPseudoRandom(base + 1) * 80}%`,
+      top: `${20 + getPseudoRandom(base + 2) * 50}%`,
+      delay: `${getPseudoRandom(base + 3) * 0.5}s`,
+      duration: `${0.3 + getPseudoRandom(base + 4) * 0.3}s`,
+    }
+  })
+
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {Array.from({ length: 8 }).map((_, i) => (
+      {sparks.map((spark, i) => (
         <div
           key={i}
           className="absolute w-1 h-1 bg-orange-400 rounded-full"
           style={{
-            left: `${10 + Math.random() * 80}%`,
-            top: `${20 + Math.random() * 50}%`,
+            left: spark.left,
+            top: spark.top,
             animationName: 'spark',
             animationTimingFunction: 'ease-out',
             animationFillMode: 'forwards',
-            animationDelay: `${Math.random() * 0.5}s`,
-            animationDuration: `${0.3 + Math.random() * 0.3}s`
+            animationDelay: spark.delay,
+            animationDuration: spark.duration,
           }}
         />
       ))}

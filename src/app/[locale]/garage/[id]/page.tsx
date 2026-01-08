@@ -67,6 +67,22 @@ interface CarData {
     }
 }
 
+interface HistoryNodeSummary {
+    id: string
+}
+
+interface Rating {
+    id: string
+    rating: number
+    comment: string | null
+    createdAt: string
+    user: {
+        id: string
+        username: string
+        name: string | null
+    }
+}
+
 export default function CarDetailPage() {
     const params = useParams()
     const router = useRouter()
@@ -76,8 +92,8 @@ export default function CarDetailPage() {
 
     const { user, loading: authLoading } = useAuth()
     const [car, setCar] = useState<CarData | null>(null)
-    const [historyNodes, setHistoryNodes] = useState<any[]>([])
-    const [ratings, setRatings] = useState<any[]>([])
+    const [historyNodes, setHistoryNodes] = useState<HistoryNodeSummary[]>([])
+    const [ratings, setRatings] = useState<Rating[]>([])
     const [avgRating, setAvgRating] = useState(0)
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
