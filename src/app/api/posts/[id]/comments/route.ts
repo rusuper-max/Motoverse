@@ -65,16 +65,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         })
 
         // Transform to add isLiked flag
-        const transformedComments = comments.map(comment => ({
-            ...comment,
-            isLiked: currentUser ? comment.likes.length > 0 : false,
-            likes: undefined,
-            replies: comment.replies.map(reply => ({
-                ...reply,
-                isLiked: currentUser ? reply.likes.length > 0 : false,
+        const transformedComments = comments.map(comment => {
+            const commentLikes = Array.isArray(comment.likes) ? comment.likes : []
+            return {
+                ...comment,
+                isLiked: commentLikes.length > 0,
                 likes: undefined,
-            })),
-        }))
+                replies: comment.replies.map(reply => {
+                    const replyLikes = Array.isArray(reply.likes) ? reply.likes : []
+                    return {
+                        ...reply,
+                        isLiked: replyLikes.length > 0,
+                        likes: undefined,
+                    }
+                }),
+            }
+        })
 
         return NextResponse.json({ comments: transformedComments })
     } catch (error) {

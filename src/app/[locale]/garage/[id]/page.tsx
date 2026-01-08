@@ -137,8 +137,14 @@ export default function CarDetailPage() {
     useEffect(() => {
         fetchCar()
         fetchHistoryNodes()
-        fetchRatings()
     }, [carId])
+
+    // Fetch ratings when user loads (to check if already rated)
+    useEffect(() => {
+        if (!authLoading) {
+            fetchRatings()
+        }
+    }, [carId, authLoading, user?.id])
 
     const fetchHistoryNodes = async () => {
         try {
@@ -584,7 +590,12 @@ export default function CarDetailPage() {
                                         {/* Rate This Car (if not owner) */}
                                         {user && !isOwner && (
                                             <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
-                                                <h3 className="text-lg font-semibold text-white mb-4">Rate This Car</h3>
+                                                <h3 className="text-lg font-semibold text-white mb-4">
+                                                    {ratings.some(r => r.user.id === user.id) ? 'Update Your Rating' : 'Rate This Car'}
+                                                </h3>
+                                                {ratings.some(r => r.user.id === user.id) && (
+                                                    <p className="text-sm text-green-400 mb-4">You&apos;ve already rated this car. You can update your rating below.</p>
+                                                )}
                                                 <div className="space-y-4">
                                                     <div>
                                                         <label className="block text-sm text-zinc-400 mb-2">Your Rating</label>
@@ -602,7 +613,7 @@ export default function CarDetailPage() {
                                                     </div>
                                                     <Button onClick={handleSubmitRating} disabled={submittingRating || myRating === 0}>
                                                         <Star className="w-4 h-4 mr-2" />
-                                                        {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                                                        {submittingRating ? 'Submitting...' : ratings.some(r => r.user.id === user.id) ? 'Update Rating' : 'Submit Rating'}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -627,14 +638,14 @@ export default function CarDetailPage() {
                                                     {ratings.map((rating) => (
                                                         <div key={rating.id} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
                                                             <div className="flex items-center justify-between mb-2">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                                                                <Link href={`/${locale}/u/${rating.user.username}`} className="flex items-center gap-3 group">
+                                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center group-hover:ring-2 group-hover:ring-orange-500 transition-all">
                                                                         <span className="text-xs font-bold text-white">
                                                                             {(rating.user.name || rating.user.username).charAt(0).toUpperCase()}
                                                                         </span>
                                                                     </div>
-                                                                    <span className="text-white font-medium">{rating.user.name || rating.user.username}</span>
-                                                                </div>
+                                                                    <span className="text-white font-medium group-hover:text-orange-400 transition-colors">{rating.user.name || rating.user.username}</span>
+                                                                </Link>
                                                                 <span className="text-sm text-zinc-500">
                                                                     {new Date(rating.createdAt).toLocaleDateString()}
                                                                 </span>
