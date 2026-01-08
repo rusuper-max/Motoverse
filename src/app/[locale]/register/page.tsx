@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,9 +38,9 @@ export default function RegisterPage() {
       const data = await res.json()
 
       if (res.ok) {
-        // Registration successful, redirect to homepage or dashboard
-        router.push(`/${locale}`)
-        router.refresh()
+        // Registration successful, show check email message
+        setStatus('success')
+        // router.push(`/${locale}`) // Don't redirect immediately
       } else {
         // Handle specific errors
         switch (data.error) {
@@ -71,6 +71,31 @@ export default function RegisterPage() {
       setErrorMessage(t.errors.failed)
       setStatus('error')
     }
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-orange-600/20 via-zinc-950 to-zinc-950" />
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 text-green-500">✉️</div>
+          </div>
+          <h1 className="text-3xl font-bold text-white">Check your email</h1>
+          <p className="text-zinc-400">
+            We've sent a confirmation link to <span className="text-white font-medium">{email}</span>.
+            Please check your inbox (and spam folder) to verify your account.
+          </p>
+          <div className="pt-4">
+            <Link href={`/${locale}/login`}>
+              <Button size="lg" className="w-full">
+                Return to Login
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
