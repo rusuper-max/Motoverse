@@ -88,8 +88,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 title,
                 description: description || null,
                 date: new Date(date),
-                mileage: mileage ? parseInt(mileage) : null,
-                cost: cost ? parseFloat(cost) : null,
+                mileage: mileage ? Number(mileage) : null,
+                cost: cost ? Number(cost) : null,
                 postId: postId || null,
             },
             include: {

@@ -408,6 +408,13 @@ model HistoryNode {
   mileage     Int?
   cost        Float?
   
+  // React Flow position
+  positionX   Float    @default(0)
+  positionY   Float    @default(0)
+  
+  // Branching support
+  parentId    String?  // Links to parent node for branching paths
+  
   // Link to blog post (optional)
   postId      String?
   post        Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
