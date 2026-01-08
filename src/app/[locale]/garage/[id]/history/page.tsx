@@ -21,6 +21,7 @@ import HistoryFlowNode from '@/components/flow/HistoryFlowNode'
 import DeletableEdge from '@/components/flow/DeletableEdge'
 import FlowContextMenu from '@/components/flow/FlowContextMenu'
 import AddNodeModal from '@/components/AddNodeModal'
+import EditNodeModal from '@/components/EditNodeModal'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -78,6 +79,7 @@ export default function HistoryPage() {
     const [rawNodes, setRawNodes] = useState<HistoryNodeData[]>([])
     const [pendingConnection, setPendingConnection] = useState<{ x: number; y: number } | null>(null)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
+    const [editingNode, setEditingNode] = useState<HistoryNodeData | null>(null)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [nodes, setNodes, onNodesChange] = useNodesState<any>([])
@@ -174,10 +176,12 @@ export default function HistoryPage() {
 
     const savePositions = async () => {
         setSaving(true)
+        console.log('Saving positions for', nodes.length, 'nodes')
         try {
-            await Promise.all(
-                nodes.map((node: any) =>
-                    fetch(`/api/cars/${carId}/history/${node.id}`, {
+            const results = await Promise.all(
+                nodes.map(async (node: any) => {
+                    console.log('Saving node:', node.id, 'at', node.position.x, node.position.y)
+                    const res = await fetch(`/api/cars/${carId}/history/${node.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -185,10 +189,24 @@ export default function HistoryPage() {
                             positionY: node.position.y,
                         }),
                     })
-                )
+                    if (!res.ok) {
+                        const data = await res.json()
+                        console.error('Failed to save node', node.id, ':', data.error)
+                        return { success: false, nodeId: node.id, error: data.error }
+                    }
+                    return { success: true, nodeId: node.id }
+                })
             )
+            const failed = results.filter(r => !r.success)
+            if (failed.length > 0) {
+                console.error('Some nodes failed to save:', failed)
+                alert(`Failed to save ${failed.length} node(s). Check console for details.`)
+            } else {
+                console.log('All positions saved successfully!')
+            }
         } catch (err) {
             console.error('Failed to save positions:', err)
+            alert('Failed to save positions. Check console for details.')
         } finally {
             setSaving(false)
             setHasChanges(false)
@@ -209,8 +227,9 @@ export default function HistoryPage() {
         }
 
         saveTimeoutRef.current = setTimeout(async () => {
+            console.log('Autosaving node:', node.id, 'at', node.position.x, node.position.y)
             try {
-                await fetch(`/api/cars/${carId}/history/${node.id}`, {
+                const res = await fetch(`/api/cars/${carId}/history/${node.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -218,7 +237,13 @@ export default function HistoryPage() {
                         positionY: node.position.y,
                     }),
                 })
-                setHasChanges(false)
+                if (!res.ok) {
+                    const data = await res.json()
+                    console.error('Autosave failed:', data.error)
+                } else {
+                    console.log('Autosave successful for node:', node.id)
+                    setHasChanges(false)
+                }
             } catch (err) {
                 console.error('Failed to autosave position:', err)
             }
@@ -276,12 +301,31 @@ export default function HistoryPage() {
             if (res.ok) {
                 setNodes((nds: any) => nds.filter((n: any) => n.id !== contextMenu.nodeId))
                 setEdges((eds: any) => eds.filter((e: any) => e.source !== contextMenu.nodeId && e.target !== contextMenu.nodeId))
+                // Also update rawNodes for cost calculation
+                setRawNodes(prev => prev.filter(n => n.id !== contextMenu.nodeId))
             }
         } catch (err) {
             console.error('Failed to delete node:', err)
         }
         setContextMenu(null)
     }, [contextMenu, carId, setNodes, setEdges])
+
+    const handleEditNode = useCallback(() => {
+        if (!contextMenu?.nodeId) return
+        const nodeData = rawNodes.find(n => n.id === contextMenu.nodeId)
+        if (nodeData) {
+            setEditingNode(nodeData)
+        }
+        setContextMenu(null)
+    }, [contextMenu, rawNodes])
+
+    const handleBranchNode = useCallback(() => {
+        if (!contextMenu?.nodeId) return
+        // Open add modal with the parent node set
+        // For now, just open add modal - branching will be implemented later
+        setShowAddModal(true)
+        setContextMenu(null)
+    }, [contextMenu])
 
     // Calculate costs by category
     const costsByCategory = rawNodes.reduce((acc, node) => {
@@ -479,8 +523,8 @@ export default function HistoryPage() {
                         </span>
                     </Panel>
 
-                    {/* Floating Save Button when changes detected */}
-                    {hasChanges && isOwner && (
+                    {/* Floating Save Button when changes detected AND autosave is OFF */}
+                    {hasChanges && isOwner && !autoSaveEnabled && (
                         <Panel position="top-center">
                             <button
                                 onClick={savePositions}
@@ -508,9 +552,9 @@ export default function HistoryPage() {
                     isOwner={isOwner}
                     onClose={() => setContextMenu(null)}
                     onAddNode={handleAddNode}
-                    onEditNode={() => { }}
+                    onEditNode={handleEditNode}
                     onDeleteNode={handleDeleteNode}
-                    onBranchNode={() => { }}
+                    onBranchNode={handleBranchNode}
                 />
             )}
 
@@ -522,6 +566,19 @@ export default function HistoryPage() {
                     onSuccess={() => {
                         fetchNodes()
                         setShowAddModal(false)
+                    }}
+                />
+            )}
+
+            {/* Edit Node Modal */}
+            {editingNode && (
+                <EditNodeModal
+                    node={editingNode}
+                    carId={carId}
+                    onClose={() => setEditingNode(null)}
+                    onSuccess={() => {
+                        fetchNodes()
+                        setEditingNode(null)
                     }}
                 />
             )}
