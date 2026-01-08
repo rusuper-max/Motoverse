@@ -9,6 +9,7 @@ import PistonRating from '@/components/ui/PistonRating'
 import HistoryCard from '@/components/HistoryCard'
 import AddNodeModal from '@/components/AddNodeModal'
 import BlogSidebar from '@/components/blog/BlogSidebar'
+import PerformanceStats from '@/components/PerformanceStats'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
@@ -390,6 +391,9 @@ export default function CarDetailPage() {
                                                 <p className="text-zinc-300">{car.description}</p>
                                             </div>
                                         )}
+
+                                        {/* Performance Stats */}
+                                        <PerformanceStats carId={car.id} />
                                     </div>
                                 )}
 
