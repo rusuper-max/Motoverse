@@ -1,24 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-
-export interface AuthUser {
-  id: string
-  email: string
-  username: string
-  name?: string | null
-  avatar?: string | null
-}
-
-interface AuthState {
-  authenticated: boolean
-  user: AuthUser | null
-  loading: boolean
-}
-
-'use client'
-
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -35,6 +17,7 @@ interface AuthState {
   user: AuthUser | null
   loading: boolean
 }
+
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
