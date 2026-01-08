@@ -7,7 +7,7 @@ import { ArrowLeft, MessageCircle, Heart, Share2, Calendar, User, Car } from 'lu
 import { useAuth } from '@/hooks/useAuth'
 import { Locale } from '@/i18n/config'
 import RichTextRenderer from '@/components/blog/RichTextRenderer'
-import Button from '@/components/ui/Button'
+import Comments from '@/components/Comments'
 
 interface Post {
     id: string
@@ -40,7 +40,7 @@ interface Post {
     }
 }
 
-interface Comment {
+interface CommentData {
     id: string
     content: string
     createdAt: string
@@ -50,6 +50,12 @@ interface Comment {
         name: string | null
         avatar: string | null
     }
+    isLiked: boolean
+    _count: {
+        likes: number
+        replies: number
+    }
+    replies?: CommentData[]
 }
 
 export default function PostDetailPage() {
@@ -62,11 +68,9 @@ export default function PostDetailPage() {
 
     const [post, setPost] = useState<Post | null>(null)
     const [loading, setLoading] = useState(true)
-    const [comments, setComments] = useState<Comment[]>([])
+    const [comments, setComments] = useState<CommentData[]>([])
     const [isLiked, setIsLiked] = useState(false)
     const [likeCount, setLikeCount] = useState(0)
-    const [newComment, setNewComment] = useState('')
-    const [submittingComment, setSubmittingComment] = useState(false)
 
     // Fetch Post
     useEffect(() => {
@@ -111,38 +115,70 @@ export default function PostDetailPage() {
         }
     }
 
-    const handleCommentSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!user) {
-            router.push(`/${locale}/login`)
-            return
-        }
-        if (!newComment.trim()) return
-
-        setSubmittingComment(true)
-        try {
-            const res = await fetch(`/api/posts/${postId}/comments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newComment }),
-            })
-
-            const data = await res.json()
-            if (data.comment) {
-                setComments(prev => [...prev, data.comment])
-                setNewComment('')
-            }
-        } catch (err) {
-            console.error('Failed to post comment', err)
-        } finally {
-            setSubmittingComment(false)
-        }
-    }
-
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href)
         alert('Link copied to clipboard!')
     }
+
+    // Comment handlers
+    const handleCommentAdded = (newComment: CommentData, parentId?: string) => {
+        if (parentId) {
+            // Add reply to parent comment
+            setComments(prev => prev.map(c => {
+                if (c.id === parentId) {
+                    return {
+                        ...c,
+                        replies: [...(c.replies || []), newComment],
+                        _count: { ...c._count, replies: c._count.replies + 1 }
+                    }
+                }
+                return c
+            }))
+        } else {
+            // Add top-level comment
+            setComments(prev => [...prev, newComment])
+        }
+    }
+
+    const handleCommentUpdated = (updatedComment: CommentData) => {
+        setComments(prev => prev.map(c => {
+            if (c.id === updatedComment.id) {
+                return { ...c, content: updatedComment.content }
+            }
+            // Check in replies
+            if (c.replies) {
+                return {
+                    ...c,
+                    replies: c.replies.map(r =>
+                        r.id === updatedComment.id ? { ...r, content: updatedComment.content } : r
+                    )
+                }
+            }
+            return c
+        }))
+    }
+
+    const handleCommentDeleted = (commentId: string, parentId?: string) => {
+        if (parentId) {
+            // Remove reply
+            setComments(prev => prev.map(c => {
+                if (c.id === parentId) {
+                    return {
+                        ...c,
+                        replies: (c.replies || []).filter(r => r.id !== commentId),
+                        _count: { ...c._count, replies: Math.max(0, c._count.replies - 1) }
+                    }
+                }
+                return c
+            }))
+        } else {
+            // Remove top-level comment
+            setComments(prev => prev.filter(c => c.id !== commentId))
+        }
+    }
+
+    // Count total comments including replies
+    const totalComments = comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)
 
     if (loading) {
         return (
@@ -214,8 +250,8 @@ export default function PostDetailPage() {
                         </h1>
 
                         <div className="flex items-center justify-between flex-wrap gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
+                            <Link href={`/${locale}/u/${post.author.username}`} className="flex items-center gap-3 group">
+                                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden group-hover:ring-2 group-hover:ring-orange-500 transition-all">
                                     {post.author.avatar ? (
                                         <img src={post.author.avatar} alt={post.author.username} className="w-full h-full object-cover" />
                                     ) : (
@@ -223,18 +259,21 @@ export default function PostDetailPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <div className="text-white font-medium">{post.author.name || post.author.username}</div>
+                                    <div className="text-white font-medium group-hover:text-orange-400 transition-colors">{post.author.name || post.author.username}</div>
                                     <div className="text-xs text-zinc-500">@{post.author.username}</div>
                                 </div>
-                            </div>
+                            </Link>
 
                             {post.car && post.car.generation && (
-                                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                                <Link
+                                    href={`/${locale}/garage/${post.car.id}`}
+                                    className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 rounded-lg border border-zinc-700 hover:border-orange-500 transition-colors"
+                                >
                                     <Car className="w-4 h-4 text-zinc-400" />
                                     <span className="text-sm text-zinc-300">
                                         {post.car.year} {post.car.generation.model.make.name} {post.car.generation.model.name}
                                     </span>
-                                </div>
+                                </Link>
                             )}
                         </div>
                     </div>
@@ -271,79 +310,18 @@ export default function PostDetailPage() {
                 <section className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden p-8">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                         <MessageCircle className="w-5 h-5 text-orange-500" />
-                        Comments ({comments.length})
+                        Comments ({totalComments})
                     </h2>
 
-                    {/* Comment Form */}
-                    {user ? (
-                        <form onSubmit={handleCommentSubmit} className="mb-8">
-                            <div className="flex gap-4">
-                                <div className="w-10 h-10 rounded-full bg-zinc-800 shrink-0 overflow-hidden">
-                                    {user.avatar ? (
-                                        <img src={user.avatar} alt={user.name || ''} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <User className="w-5 h-5 text-zinc-500 m-auto mt-2.5" />
-                                    )}
-                                </div>
-                                <div className="flex-1">
-                                    <textarea
-                                        value={newComment}
-                                        onChange={(e) => setNewComment(e.target.value)}
-                                        placeholder="Write a comment..."
-                                        rows={3}
-                                        className="w-full px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 resize-none mb-3"
-                                    />
-                                    <div className="flex justify-end">
-                                        <Button type="submit" disabled={submittingComment || !newComment.trim()}>
-                                            {submittingComment ? 'Posting...' : 'Post Comment'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    ) : (
-                        <div className="bg-zinc-800/30 border border-zinc-800 rounded-xl p-6 text-center mb-8">
-                            <p className="text-zinc-400 mb-4">Log in to join the discussion</p>
-                            <Link href={`/${locale}/login`}>
-                                <Button variant="secondary">Log In</Button>
-                            </Link>
-                        </div>
-                    )}
-
-                    {/* Comments List */}
-                    <div className="space-y-6">
-                        {comments.length === 0 ? (
-                            <p className="text-zinc-500 text-center italic py-4">No comments yet. Be the first!</p>
-                        ) : (
-                            comments.map((comment) => (
-                                <div key={comment.id} className="flex gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-zinc-800 shrink-0 overflow-hidden">
-                                        {comment.author.avatar ? (
-                                            <img src={comment.author.avatar} alt={comment.author.username} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User className="w-5 h-5 text-zinc-500 m-auto mt-2.5" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-white font-medium">{comment.author.name || comment.author.username}</span>
-                                                <span className="text-xs text-zinc-500">
-                                                    {new Date(comment.createdAt).toLocaleDateString(undefined, {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })}
-                                                </span>
-                                            </div>
-                                            <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                    <Comments
+                        postId={postId}
+                        comments={comments}
+                        currentUser={user ? { id: user.id, avatar: user.avatar, name: user.name } : null}
+                        locale={locale}
+                        onCommentAdded={handleCommentAdded}
+                        onCommentUpdated={handleCommentUpdated}
+                        onCommentDeleted={handleCommentDeleted}
+                    />
                 </section>
             </div>
         </div>

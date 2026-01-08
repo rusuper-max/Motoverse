@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { Car, FileText, MapPin, Calendar, Users, Heart, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react'
+import { Car, FileText, MapPin, Calendar, Heart, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react'
 import FollowButton from '@/components/FollowButton'
 
 interface UserProfile {
@@ -147,11 +146,10 @@ export default function UserProfilePage() {
       {/* Cover Image */}
       <div className="relative h-48 sm:h-64 bg-gradient-to-br from-orange-600/30 to-zinc-900">
         {user.coverImage && (
-          <Image
+          <img
             src={user.coverImage}
             alt="Cover"
-            fill
-            className="object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         )}
       </div>
@@ -163,11 +161,9 @@ export default function UserProfilePage() {
             {/* Avatar */}
             <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-zinc-800 border-4 border-zinc-950 overflow-hidden">
               {user.avatar ? (
-                <Image
+                <img
                   src={user.avatar}
                   alt={user.username}
-                  width={144}
-                  height={144}
                   className="object-cover w-full h-full"
                 />
               ) : (
@@ -330,13 +326,12 @@ function CarCard({ car, locale }: { car: UserProfile['cars'][0]; locale: string 
   return (
     <Link href={`/${locale}/garage/${car.id}`}>
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors group">
-        <div className="relative aspect-video bg-zinc-800">
+        <div className="relative aspect-video bg-zinc-800 overflow-hidden">
           {car.image ? (
-            <Image
+            <img
               src={car.image}
               alt={getCarName()}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -391,11 +386,10 @@ function PostCard({ post, locale }: { post: UserProfile['posts'][0]; locale: str
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors flex">
         {imageUrl && (
           <div className="relative w-32 sm:w-48 flex-shrink-0">
-            <Image
+            <img
               src={imageUrl}
               alt={post.title}
-              fill
-              className="object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           </div>
         )}

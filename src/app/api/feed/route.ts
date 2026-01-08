@@ -39,7 +39,13 @@ export async function GET(req: Request) {
             },
           },
           car: {
-            include: {
+            select: {
+              id: true,
+              nickname: true,
+              year: true,
+              image: true,
+              thumbnail: true,
+              images: true,
               generation: {
                 include: {
                   model: {

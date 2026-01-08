@@ -23,6 +23,7 @@ model User {
   posts         Post[]
   comments      Comment[]
   likes         Like[]
+  commentLikes  CommentLike[]
   followers     Follow[]  @relation("following")
   following     Follow[]  @relation("follower")
   listings      Listing[]
@@ -211,8 +212,30 @@ model Comment {
   postId        String
   post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
 
+  // Reply support - nested comments
+  parentId      String?
+  parent        Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[] @relation("CommentReplies")
+
+  // Likes on comments
+  likes         CommentLike[]
+
   @@index([authorId])
   @@index([postId])
+  @@index([parentId])
+}
+
+model CommentLike {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId     String
+  comment       Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
 }
 
 model Like {

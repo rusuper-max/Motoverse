@@ -6,12 +6,18 @@ interface RouteParams {
     params: Promise<{ id: string }>
 }
 
-// GET /api/posts/[id]/comments - Get comments for a post
+// GET /api/posts/[id]/comments - Get comments for a post (with replies and likes)
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const { id: postId } = await params
+        const currentUser = await getSessionUser()
+
+        // Fetch top-level comments (no parent) with their replies
         const comments = await prisma.comment.findMany({
-            where: { postId },
+            where: {
+                postId,
+                parentId: null, // Only top-level comments
+            },
             include: {
                 author: {
                     select: {
@@ -21,17 +27,63 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                         avatar: true,
                     },
                 },
+                _count: {
+                    select: {
+                        likes: true,
+                        replies: true,
+                    },
+                },
+                likes: currentUser ? {
+                    where: { userId: currentUser.id },
+                    select: { id: true },
+                } : false,
+                replies: {
+                    include: {
+                        author: {
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true,
+                                avatar: true,
+                            },
+                        },
+                        _count: {
+                            select: {
+                                likes: true,
+                                replies: true,
+                            },
+                        },
+                        likes: currentUser ? {
+                            where: { userId: currentUser.id },
+                            select: { id: true },
+                        } : false,
+                    },
+                    orderBy: { createdAt: 'asc' },
+                },
             },
             orderBy: { createdAt: 'asc' },
         })
 
-        return NextResponse.json({ comments })
+        // Transform to add isLiked flag
+        const transformedComments = comments.map(comment => ({
+            ...comment,
+            isLiked: currentUser ? comment.likes.length > 0 : false,
+            likes: undefined,
+            replies: comment.replies.map(reply => ({
+                ...reply,
+                isLiked: currentUser ? reply.likes.length > 0 : false,
+                likes: undefined,
+            })),
+        }))
+
+        return NextResponse.json({ comments: transformedComments })
     } catch (error) {
+        console.error('[comments.GET] failed', error)
         return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 })
     }
 }
 
-// POST /api/posts/[id]/comments - Add a comment
+// POST /api/posts/[id]/comments - Add a comment or reply
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const user = await getSessionUser()
@@ -39,17 +91,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
         const { id: postId } = await params
         const body = await request.json()
-        const { content } = body
+        const { content, parentId } = body
 
         if (!content || !content.trim()) {
             return NextResponse.json({ error: 'Content required' }, { status: 400 })
         }
 
+        // If parentId provided, verify it exists and belongs to same post
+        if (parentId) {
+            const parentComment = await prisma.comment.findUnique({
+                where: { id: parentId },
+                select: { postId: true },
+            })
+            if (!parentComment || parentComment.postId !== postId) {
+                return NextResponse.json({ error: 'Invalid parent comment' }, { status: 400 })
+            }
+        }
+
         const comment = await prisma.comment.create({
             data: {
-                content,
+                content: content.trim(),
                 postId,
                 authorId: user.id,
+                parentId: parentId || null,
             },
             include: {
                 author: {
@@ -60,11 +124,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                         avatar: true,
                     },
                 },
+                _count: {
+                    select: {
+                        likes: true,
+                        replies: true,
+                    },
+                },
             },
         })
 
-        return NextResponse.json({ comment }, { status: 201 })
+        return NextResponse.json({
+            comment: {
+                ...comment,
+                isLiked: false,
+                replies: [],
+            }
+        }, { status: 201 })
     } catch (error) {
+        console.error('[comments.POST] failed', error)
         return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 })
     }
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { Search, Car, FileText, Heart, MessageCircle, Calendar, User, Loader2 } from 'lucide-react'
 
@@ -15,7 +14,7 @@ interface FeedItem {
     title?: string
     content?: string
     category?: string
-    images?: string
+    images?: string | string[] // Post has JSON string, Car has array
     thumbnail?: string
     nickname?: string
     year?: number
@@ -39,6 +38,8 @@ interface FeedItem {
       id: string
       nickname: string | null
       year: number
+      image?: string | null
+      thumbnail?: string | null
       generation?: {
         name: string
         model: {
@@ -104,14 +105,20 @@ export default function ExplorePage() {
   const getImageUrl = (item: FeedItem) => {
     if (item.type === 'post') {
       if (item.data.thumbnail) return item.data.thumbnail
-      if (item.data.images) {
+      if (item.data.images && typeof item.data.images === 'string') {
         try {
           const imgs = JSON.parse(item.data.images)
-          if (imgs.length > 0) return imgs[0]
+          if (Array.isArray(imgs) && imgs.length > 0) return imgs[0]
         } catch {}
       }
     }
-    return item.data.image || item.data.thumbnail || null
+    // For cars - check thumbnail, image, or first in images array
+    if (item.data.thumbnail) return item.data.thumbnail
+    if (item.data.image) return item.data.image
+    if (item.data.images && Array.isArray(item.data.images) && item.data.images.length > 0) {
+      return item.data.images[0]
+    }
+    return null
   }
 
   const filteredItems = items.filter(item => {
@@ -211,16 +218,31 @@ function FeedCard({ item, locale }: { item: FeedItem; locale: string }) {
   }
 
   const getImageUrl = () => {
+    // For posts - check thumbnail first, then parse images JSON
     if (item.type === 'post') {
       if (item.data.thumbnail) return item.data.thumbnail
       if (item.data.images) {
-        try {
-          const imgs = JSON.parse(item.data.images)
-          if (imgs.length > 0) return imgs[0]
-        } catch {}
+        // Post.images is a JSON string
+        if (typeof item.data.images === 'string') {
+          try {
+            const imgs = JSON.parse(item.data.images)
+            if (Array.isArray(imgs) && imgs.length > 0) return imgs[0]
+          } catch {}
+        }
       }
+      // Fallback to car's image if post has no images
+      if (item.data.car?.image) return item.data.car.image
+      if (item.data.car?.thumbnail) return item.data.car.thumbnail
+      return null
     }
-    return item.data.image || item.data.thumbnail || null
+
+    // For cars - check thumbnail, image, or first in images array
+    if (item.data.thumbnail) return item.data.thumbnail
+    if (item.data.image) return item.data.image
+    if (item.data.images && Array.isArray(item.data.images) && item.data.images.length > 0) {
+      return item.data.images[0]
+    }
+    return null
   }
 
   const imageUrl = getImageUrl()
@@ -235,11 +257,10 @@ function FeedCard({ item, locale }: { item: FeedItem; locale: string }) {
       <Link href={isPost ? postLink! : carLink!}>
         <div className="relative aspect-video bg-zinc-800">
           {imageUrl ? (
-            <Image
+            <img
               src={imageUrl}
               alt={getCarName()}
-              fill
-              className="object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -282,9 +303,9 @@ function FeedCard({ item, locale }: { item: FeedItem; locale: string }) {
         {/* Owner/Author */}
         {user && (
           <Link href={`/${locale}/u/${user.username}`} className="flex items-center gap-2 mt-3 group">
-            <div className="w-6 h-6 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="w-6 h-6 rounded-full bg-zinc-800 overflow-hidden flex-shrink-0">
               {user.avatar ? (
-                <Image src={user.avatar} alt={user.username} width={24} height={24} className="object-cover" />
+                <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-3 h-3 text-zinc-500" />
