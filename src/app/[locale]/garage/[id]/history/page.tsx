@@ -16,6 +16,7 @@ import {
     type Edge,
     type Connection,
     type OnNodeDrag,
+    type OnConnectStart,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp, FileText } from 'lucide-react'
@@ -126,7 +127,7 @@ export default function HistoryPage() {
     const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
     const [showCostBreakdown, setShowCostBreakdown] = useState(false)
     const [rawNodes, setRawNodes] = useState<HistoryNodeData[]>([])
-    const [pendingConnection, setPendingConnection] = useState<{ x: number; y: number } | null>(null)
+    const [pendingConnection, setPendingConnection] = useState<{ x: number; y: number; sourceNodeId?: string } | null>(null)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
     const [editingNode, setEditingNode] = useState<HistoryNodeData | null>(null)
     const [insertionContext, setInsertionContext] = useState<{ parentId: string; childId: string } | null>(null)
@@ -137,6 +138,7 @@ export default function HistoryPage() {
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null)
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const connectingNodeId = useRef<string | null>(null)
 
     const isOwner = user?.id === car?.ownerId
 
@@ -257,29 +259,41 @@ export default function HistoryPage() {
 
     // Delete an edge
     const deleteEdge = useCallback(async (edgeId: string) => {
-        // Find the edge to get the target node ID
-        const edgeToDelete = edges.find((edge) => edge.id === edgeId)
-        if (!edgeToDelete) return
+        // Use setEdges callback to get current edges and find the one to delete
+        let targetNodeId: string | null = null
 
-        // Optimistic update
-        setEdges((eds) => eds.filter((edge) => edge.id !== edgeId))
-
-        // Persist to DB (set parentId to null)
-        try {
-            const res = await fetch(`/api/cars/${carId}/history/${edgeToDelete.target}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    parentId: null, // Disconnect
-                }),
-            })
-            if (!res.ok) {
-                console.error('Failed to unlink nodes')
+        setEdges((currentEdges) => {
+            const edgeToDelete = currentEdges.find((edge) => edge.id === edgeId)
+            if (edgeToDelete) {
+                targetNodeId = edgeToDelete.target
             }
-        } catch (err) {
-            console.error('Failed to unlink nodes:', err)
-        }
-    }, [edges, carId, setEdges])
+            // Optimistic update - filter out the edge
+            return currentEdges.filter((edge) => edge.id !== edgeId)
+        })
+
+        // Wait a tick for targetNodeId to be set, then persist to DB
+        setTimeout(async () => {
+            if (!targetNodeId) {
+                console.error('Could not find edge to delete:', edgeId)
+                return
+            }
+
+            try {
+                const res = await fetch(`/api/cars/${carId}/history/${targetNodeId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        parentId: null, // Disconnect
+                    }),
+                })
+                if (!res.ok) {
+                    console.error('Failed to unlink nodes')
+                }
+            } catch (err) {
+                console.error('Failed to unlink nodes:', err)
+            }
+        }, 0)
+    }, [carId, setEdges])
 
     // Insert node between two others
     const handleInsertNode = useCallback((edgeId: string, sourceId: string, targetId: string) => {
@@ -372,6 +386,11 @@ export default function HistoryPage() {
 
 
 
+    // Track which node we're connecting from
+    const onConnectStart: OnConnectStart = useCallback((_event, { nodeId }) => {
+        connectingNodeId.current = nodeId
+    }, [])
+
     // When dragging from a handle and releasing on empty canvas, open add modal
     const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
         if (!isOwner) return
@@ -380,14 +399,19 @@ export default function HistoryPage() {
         const target = event.target
         const targetIsPane =
             target instanceof HTMLElement && target.classList.contains('react-flow__pane')
-        if (targetIsPane) {
+        if (targetIsPane && connectingNodeId.current) {
             const bounds = reactFlowWrapper.current?.getBoundingClientRect()
             if (bounds) {
                 const point = getEventClientPoint(event)
-                setPendingConnection({ x: point.x - bounds.left, y: point.y - bounds.top })
+                setPendingConnection({
+                    x: point.x - bounds.left,
+                    y: point.y - bounds.top,
+                    sourceNodeId: connectingNodeId.current
+                })
                 setShowAddModal(true)
             }
         }
+        connectingNodeId.current = null
     }, [isOwner])
 
     const handleContextMenu = useCallback((event: React.MouseEvent, node?: HistoryFlowNode) => {
@@ -671,6 +695,7 @@ export default function HistoryPage() {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    onConnectStart={onConnectStart}
                     onConnectEnd={onConnectEnd}
                     onNodeDragStop={onNodeDragStop}
                     onPaneClick={handlePaneClick}
@@ -747,10 +772,11 @@ export default function HistoryPage() {
             {showAddModal && (
                 <AddNodeModal
                     carId={carId}
-                    parentId={insertionContext?.parentId}
+                    parentId={insertionContext?.parentId || pendingConnection?.sourceNodeId}
                     onClose={() => {
                         setShowAddModal(false)
                         setInsertionContext(null)
+                        setPendingConnection(null)
                     }}
                     onSuccess={handleNodeCreated}
                 />

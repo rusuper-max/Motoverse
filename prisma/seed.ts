@@ -8,6 +8,7 @@ import {
   audiModels, audiGenerations,
   bmwModels, bmwGenerations,
   volkswagenModels, volkswagenGenerations,
+  suzukiModels, suzukiGenerations,
   type GenerationData
 } from './seed/brands'
 
@@ -130,6 +131,7 @@ const carModels: Record<string, string[]> = {
   'tesla': ['Model S', 'Model 3', 'Model X', 'Model Y', 'Cybertruck', 'Roadster'],
   'subaru': ['Impreza', 'WRX', 'BRZ', 'Forester', 'Outback', 'XV', 'Legacy', 'Levorg'],
   'mazda': ['MX-5', 'RX-7', 'RX-8', 'Mazda3', 'Mazda6', 'CX-3', 'CX-30', 'CX-5', 'CX-60', 'CX-90'],
+  'suzuki': suzukiModels,
 }
 
 // Helper to create slug from name
@@ -140,6 +142,7 @@ const carGenerations: Record<string, Record<string, GenerationData[]>> = {
   'audi': audiGenerations,
   'bmw': bmwGenerations,
   'volkswagen': volkswagenGenerations,
+  'suzuki': suzukiGenerations,
 }
 
 async function main() {
