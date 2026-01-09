@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Home, Search, PlusCircle, User, Menu, X, LayoutGrid, Globe, LogOut, CalendarDays, Trophy, Bell, Zap, MessageCircle, Camera } from 'lucide-react'
+import { Car, Home, Search, PlusCircle, User, Menu, X, LayoutGrid, Globe, LogOut, CalendarDays, Trophy, Bell, Zap, MessageCircle, Camera, Shield } from 'lucide-react'
 import Button from '../ui/Button'
 import { Locale, locales, localeNames, localeFlags } from '@/i18n/config'
 import { Dictionary } from '@/i18n'
@@ -386,6 +386,16 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                       <Car className="w-4 h-4" />
                       <span>{t.myGarage}</span>
                     </Link>
+                    {user.role === 'admin' && (
+                      <Link
+                        href={localePath('/admin')}
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-orange-400 hover:bg-zinc-800 transition-colors"
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>Admin Panel</span>
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         setIsUserMenuOpen(false)
@@ -505,15 +515,25 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                       <p className="text-zinc-500 text-sm">{user.email}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Link href={localePath('/garage')} className="flex-1">
-                      <Button variant="outline" className="w-full">
-                        {t.myGarage}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Link href={localePath('/garage')} className="flex-1">
+                        <Button variant="outline" className="w-full">
+                          {t.myGarage}
+                        </Button>
+                      </Link>
+                      <Button variant="ghost" className="text-red-400" onClick={logout}>
+                        <LogOut className="w-5 h-5" />
                       </Button>
-                    </Link>
-                    <Button variant="ghost" className="text-red-400" onClick={logout}>
-                      <LogOut className="w-5 h-5" />
-                    </Button>
+                    </div>
+                    {user.role === 'admin' && (
+                      <Link href={localePath('/admin')}>
+                        <Button variant="outline" className="w-full text-orange-400 border-orange-500/50 hover:bg-orange-500/10">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Admin Panel
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               ) : (

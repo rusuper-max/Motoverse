@@ -130,6 +130,13 @@ export default function CarDetailPage() {
     const [carFollowerCount, setCarFollowerCount] = useState(0)
     const [togglingFollow, setTogglingFollow] = useState(false)
 
+    // Percentile rankings
+    const [percentiles, setPercentiles] = useState<{
+        horsepower: number | null
+        torque: number | null
+        investment: number | null
+    } | null>(null)
+
     // Form state for specs
     const [specs, setSpecs] = useState({
         curbWeight: '',
@@ -161,7 +168,20 @@ export default function CarDetailPage() {
         fetchCar()
         fetchHistoryNodes()
         fetchCarFollowStatus()
+        fetchPercentiles()
     }, [carId])
+
+    const fetchPercentiles = async () => {
+        try {
+            const res = await fetch(`/api/cars/${carId}/percentile`)
+            if (res.ok) {
+                const data = await res.json()
+                setPercentiles(data)
+            }
+        } catch {
+            // ignore
+        }
+    }
 
     const fetchCarFollowStatus = async () => {
         try {
@@ -507,6 +527,7 @@ export default function CarDetailPage() {
                                                 onEdit={(value) => handleAdminEditPower('horsepower', value)}
                                                 onMarkStock={handleAdminMarkStock}
                                                 stockValue={car.engineConfig?.horsepower}
+                                                percentile={percentiles?.horsepower}
                                             />
                                         )}
                                         {car.torque && (
@@ -522,6 +543,7 @@ export default function CarDetailPage() {
                                                 onEdit={(value) => handleAdminEditPower('torque', value)}
                                                 onMarkStock={handleAdminMarkStock}
                                                 stockValue={car.engineConfig?.torque}
+                                                percentile={percentiles?.torque}
                                             />
                                         )}
                                         {car.mileage && (
@@ -547,10 +569,11 @@ export default function CarDetailPage() {
                                     {(() => {
                                         const totalSpent = historyNodes.reduce((sum, node) => sum + (node.cost || 0), 0)
                                         if (totalSpent === 0 && historyNodes.length === 0) return null
+                                        const investmentPercentile = percentiles?.investment
                                         return (
                                             <Link
                                                 href={`/${locale}/garage/${car.id}/history`}
-                                                className="mt-6 flex items-center justify-between p-4 bg-zinc-800/50 hover:bg-zinc-800 rounded-xl border border-zinc-700/50 hover:border-zinc-600 transition-all group cursor-pointer"
+                                                className="mt-6 flex items-center justify-between p-4 bg-zinc-800/50 hover:bg-zinc-800 rounded-xl border border-zinc-700/50 hover:border-zinc-600 transition-all group cursor-pointer relative"
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
@@ -563,9 +586,16 @@ export default function CarDetailPage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-zinc-500 group-hover:text-orange-400 transition-colors">
-                                                    <span className="text-sm">{historyNodes.length} event{historyNodes.length !== 1 ? 's' : ''}</span>
-                                                    <History className="w-4 h-4" />
+                                                <div className="flex items-center gap-3">
+                                                    {investmentPercentile !== null && investmentPercentile !== undefined && investmentPercentile <= 50 && totalSpent > 0 && (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-purple-500 text-white">
+                                                            Top {investmentPercentile}%
+                                                        </span>
+                                                    )}
+                                                    <div className="flex items-center gap-2 text-zinc-500 group-hover:text-orange-400 transition-colors">
+                                                        <span className="text-sm">{historyNodes.length} event{historyNodes.length !== 1 ? 's' : ''}</span>
+                                                        <History className="w-4 h-4" />
+                                                    </div>
                                                 </div>
                                             </Link>
                                         )
@@ -1075,7 +1105,7 @@ function SpecDisplaySection({ title, items }: { title: string; items: { label: s
     )
 }
 
-function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof, isAdmin, onVerify, onEdit, onMarkStock, verificationType, stockValue }: {
+function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof, isAdmin, onVerify, onEdit, onMarkStock, verificationType, stockValue, percentile }: {
     value: number
     unit: string
     isVerified: boolean
@@ -1087,6 +1117,7 @@ function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof, isA
     onMarkStock?: () => void
     verificationType?: 'hp' | 'torque'
     stockValue?: number | null
+    percentile?: number | null
 }) {
     const [showTooltip, setShowTooltip] = useState(false)
     const [showAdminMenu, setShowAdminMenu] = useState(false)
@@ -1167,9 +1198,11 @@ function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof, isA
                 </div>
             ) : (
                 <>
-                    {/* Power difference indicator */}
+                    <p className="text-2xl font-bold text-white">{value}</p>
+                    <p className="text-xs text-zinc-500">{unit}</p>
+                    {/* Power difference indicator - bottom left */}
                     {diff !== null && (
-                        <div className={`absolute -top-2 -left-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-lg ${
+                        <div className={`absolute -bottom-2 -left-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-lg ${
                             diff > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                         }`}>
                             {diff > 0 ? (
@@ -1180,8 +1213,12 @@ function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof, isA
                             {diff > 0 ? '+' : ''}{Math.round(diff)}%
                         </div>
                     )}
-                    <p className="text-2xl font-bold text-white">{value}</p>
-                    <p className="text-xs text-zinc-500">{unit}</p>
+                    {/* Percentile badge - bottom right */}
+                    {percentile !== null && percentile !== undefined && percentile <= 50 && (
+                        <div className="absolute -bottom-2 -right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-lg bg-purple-500 text-white">
+                            Top {percentile}%
+                        </div>
+                    )}
                 </>
             )}
             <div

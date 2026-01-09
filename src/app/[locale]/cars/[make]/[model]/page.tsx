@@ -70,7 +70,13 @@ async function getModelWithGenerations(makeSlug: string, modelSlug: string) {
       generation: { modelId: model.id },
     },
     include: {
-      generation: true,
+      generation: {
+        include: {
+          model: {
+            include: { make: true }
+          }
+        }
+      },
       owner: {
         select: {
           id: true,
@@ -106,7 +112,13 @@ async function getModelWithGenerations(makeSlug: string, modelSlug: string) {
         id: { in: directCarIds.map(c => c.id) },
       },
       include: {
-        generation: true,
+        generation: {
+          include: {
+            model: {
+              include: { make: true }
+            }
+          }
+        },
         owner: {
           select: {
             id: true,
@@ -364,8 +376,8 @@ export default async function ModelPage({ params }: Props) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {recentCars.map((car) => {
-                const carMake = car.generation?.model?.make?.name || car.make || model.make.name
-                const carModel = car.generation?.model?.name || car.model || model.name
+                const carMake = car.generation?.model?.make?.name || model.make.name
+                const carModel = car.generation?.model?.name || model.name
 
                 return (
                   <Link
