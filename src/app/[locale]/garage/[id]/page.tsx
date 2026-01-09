@@ -7,7 +7,7 @@ import {
     ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Timer, History,
     Star, User, Bell, BellOff, MessageCircleOff, BadgeCheck, Zap,
     Clock, TrendingUp, TrendingDown, DollarSign, ChevronRight,
-    Share2, MapPin, Calendar, Activity, BookOpen, Plus, PenLine, Upload
+    Share2, MapPin, Calendar, Activity, BookOpen, Plus, PenLine, Upload, AlertCircle
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import RevLimiterRating from '@/components/ui/RevLimiterRating'
@@ -16,6 +16,7 @@ import AddNodeModal from '@/components/AddNodeModal'
 import CarCommentsSidebar from '@/components/CarCommentsSidebar'
 import PerformanceStats from '@/components/PerformanceStats'
 import PhotoAlbum from '@/components/PhotoAlbum'
+import BlogSidebar from '@/components/blog/BlogSidebar'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
@@ -414,8 +415,21 @@ export default function CarDetailPage() {
                             </div>
                         </div>
 
-                        {/* Actions */}
+                        {/* Actions with Stats */}
                         <div className="flex items-center gap-3">
+                            {/* Stats Badges */}
+                            <div className="hidden sm:flex items-center gap-2 mr-2">
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur border border-white/10">
+                                    <User className="w-3.5 h-3.5 text-zinc-400" />
+                                    <span className="text-sm font-medium text-white">{carFollowerCount}</span>
+                                </div>
+                                {avgRating > 0 && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur border border-white/10">
+                                        <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
+                                        <span className="text-sm font-medium text-white">{avgRating.toFixed(1)}</span>
+                                    </div>
+                                )}
+                            </div>
                             <Button variant="outline" className="backdrop-blur-md bg-white/5 border-white/10 hover:bg-white/10">
                                 <Share2 className="w-4 h-4 mr-2" />
                                 Share
@@ -543,12 +557,20 @@ export default function CarDetailPage() {
 
                             {activeTab === 'history' && (
                                 <div className="space-y-4">
-                                    {isOwner && (
-                                        <Button onClick={() => setShowAddNodeModal(true)}>
-                                            <Plus className="w-4 h-4 mr-2" />
-                                            Add Event
-                                        </Button>
-                                    )}
+                                    <div className="flex items-center justify-between">
+                                        {isOwner && (
+                                            <Button onClick={() => setShowAddNodeModal(true)}>
+                                                <Plus className="w-4 h-4 mr-2" />
+                                                Add Event
+                                            </Button>
+                                        )}
+                                        <Link
+                                            href={`/${locale}/garage/${carId}/history`}
+                                            className="text-sm text-orange-400 hover:text-orange-300 font-medium ml-auto"
+                                        >
+                                            View Full History →
+                                        </Link>
+                                    </div>
                                     {historyNodes.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
                                             <History className="w-12 h-12 mb-4 opacity-20" />
@@ -556,24 +578,32 @@ export default function CarDetailPage() {
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
-                                            {historyNodes.map(node => (
-                                                <Link
-                                                    key={node.id}
-                                                    href={`/${locale}/garage/${carId}/history/${node.id}`}
-                                                    className="block p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
-                                                >
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{node.type}</span>
-                                                            <h3 className="text-white font-medium mt-1">{node.title}</h3>
-                                                            <p className="text-xs text-zinc-500 mt-1">{node.date}</p>
+                                            {historyNodes.map(node => {
+                                                // Format date without hours/minutes
+                                                const formattedDate = node.date ? new Date(node.date).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric'
+                                                }) : ''
+                                                return (
+                                                    <Link
+                                                        key={node.id}
+                                                        href={`/${locale}/garage/${carId}/history/${node.id}`}
+                                                        className="block p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                                                    >
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{node.type}</span>
+                                                                <h3 className="text-white font-medium mt-1">{node.title}</h3>
+                                                                <p className="text-xs text-zinc-500 mt-1">{formattedDate}</p>
+                                                            </div>
+                                                            {node.cost && node.cost > 0 && (
+                                                                <span className="text-green-400 font-medium">€{node.cost.toLocaleString()}</span>
+                                                            )}
                                                         </div>
-                                                        {node.cost && node.cost > 0 && (
-                                                            <span className="text-green-400 font-medium">€{node.cost.toLocaleString()}</span>
-                                                        )}
-                                                    </div>
-                                                </Link>
-                                            ))}
+                                                    </Link>
+                                                )
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -640,6 +670,22 @@ export default function CarDetailPage() {
                                     )}
                                 </div>
                             )}
+
+                            {/* Comments Section - Full Width */}
+                            {car.commentsEnabled ? (
+                                <div className="mt-8">
+                                    <CarCommentsSidebar
+                                        carId={carId}
+                                        locale={locale}
+                                        currentUser={user ? { id: user.id, avatar: user.avatar, name: user.name } : null}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="mt-8 p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
+                                    <MessageCircleOff className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                                    <p className="text-zinc-500 text-sm">Comments are disabled for this build.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -674,6 +720,8 @@ export default function CarDetailPage() {
                                         unit="HP"
                                         stock={car.engineConfig?.horsepower}
                                         verified={car.dynoVerified}
+                                        hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
+                                        isStock={car.isStockPower || (!car.dynoVerified && car.engineConfig?.horsepower === car.horsepower)}
                                         ranking={percentiles?.horsepower}
                                     />
                                     <PowerMetric
@@ -682,6 +730,8 @@ export default function CarDetailPage() {
                                         unit="Nm"
                                         stock={car.engineConfig?.torque}
                                         verified={car.torqueVerified}
+                                        hasPendingProof={!!car.dynoProofUrl && !car.torqueVerified}
+                                        isStock={car.isStockPower || (!car.torqueVerified && car.engineConfig?.torque === car.torque)}
                                         ranking={percentiles?.torque}
                                     />
                                 </div>
@@ -708,112 +758,27 @@ export default function CarDetailPage() {
                             </div>
                         </div>
 
-                        {/* Owner Card */}
-                        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6">
-                            <div className="flex items-center gap-4 mb-6">
-                                {car.owner.avatar ? (
-                                    <img src={car.owner.avatar} alt={car.owner.username} className="w-12 h-12 rounded-full object-cover" />
-                                ) : (
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-orange-500 to-red-600 flex items-center justify-center text-lg font-bold text-white shadow-lg shadow-orange-900/20">
-                                        {car.owner.username.charAt(0).toUpperCase()}
-                                    </div>
-                                )}
-                                <div>
-                                    <h4 className="text-white font-bold">{car.owner.name || car.owner.username}</h4>
-                                    <p className="text-sm text-zinc-500">@{car.owner.username}</p>
-                                </div>
-                                <Link href={`/${locale}/u/${car.owner.username}`} className="ml-auto">
-                                    <Button variant="outline" size="sm" className="rounded-full w-8 h-8 p-0">
-                                        <ChevronRight className="w-4 h-4" />
-                                    </Button>
-                                </Link>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 text-center">
-                                <div className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800">
-                                    <p className="text-2xl font-bold text-white">{carFollowerCount}</p>
-                                    <p className="text-xs text-zinc-500 uppercase tracking-wide">Followers</p>
-                                </div>
-                                <div className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800">
-                                    <p className="text-2xl font-bold text-orange-400">{avgRating > 0 ? avgRating.toFixed(1) : '-'}</p>
-                                    <p className="text-xs text-zinc-500 uppercase tracking-wide">Rating</p>
-                                </div>
-                            </div>
-
-                            <div className="mt-4">
-                                {isOwner ? (
-                                    <div className="flex gap-2">
-                                        <Link href={`/${locale}/garage/${car.id}/edit`} className="flex-1">
-                                            <Button variant="outline" className="w-full">Settings</Button>
-                                        </Link>
-                                        <Link href={`/${locale}/garage`} className="flex-1">
-                                            <Button variant="outline" className="w-full">Garage</Button>
-                                        </Link>
-                                    </div>
-                                ) : user && (
-                                    <Button className="w-full" onClick={() => setActiveTab('rating')}>
-                                        <Star className="w-4 h-4 mr-2" />
-                                        Rate Build
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Build Journal */}
-                        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-white font-bold flex items-center gap-2">
-                                    <BookOpen className="w-5 h-5 text-zinc-400" />
-                                    Build Journal
-                                </h3>
-                                <Link href={`/${locale}/garage/${car.id}/history`} className="text-xs text-orange-400 hover:text-orange-300 font-medium">View All</Link>
-                            </div>
-
-                            {historyNodes.length === 0 ? (
-                                <p className="text-zinc-500 text-sm text-center py-4">No journal entries yet</p>
+                        {/* Owner Link - Compact */}
+                        <Link
+                            href={`/${locale}/u/${car.owner.username}`}
+                            className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                        >
+                            {car.owner.avatar ? (
+                                <img src={car.owner.avatar} alt={car.owner.username} className="w-10 h-10 rounded-full object-cover" />
                             ) : (
-                                <div className="space-y-4">
-                                    {historyNodes.slice(0, 3).map((entry) => (
-                                        <Link key={entry.id} href={`/${locale}/garage/${carId}/history/${entry.id}`} className="flex gap-3 group">
-                                            <div className="w-12 h-12 rounded-lg bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700/50 flex items-center justify-center">
-                                                <PenLine className="w-5 h-5 text-zinc-600" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <h4 className="text-sm font-medium text-zinc-200 group-hover:text-orange-400 transition-colors line-clamp-1">{entry.title}</h4>
-                                                <span className="text-xs text-zinc-500 mt-1 block">{entry.date}</span>
-                                            </div>
-                                        </Link>
-                                    ))}
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-500 to-red-600 flex items-center justify-center text-sm font-bold text-white">
+                                    {car.owner.username.charAt(0).toUpperCase()}
                                 </div>
                             )}
-
-                            {isOwner && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full mt-4 border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-600 hover:bg-zinc-800/50"
-                                    onClick={() => setShowAddNodeModal(true)}
-                                >
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    New Entry
-                                </Button>
-                            )}
-                        </div>
-
-                        {/* Comments Status */}
-                        {!car.commentsEnabled && (
-                            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6 text-center">
-                                <MessageCircleOff className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                                <p className="text-zinc-500 text-sm">Comments are disabled for this build.</p>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-medium truncate">{car.owner.name || car.owner.username}</h4>
+                                <p className="text-xs text-zinc-500">@{car.owner.username}</p>
                             </div>
-                        )}
+                            <ChevronRight className="w-4 h-4 text-zinc-500" />
+                        </Link>
 
-                        {car.commentsEnabled && (
-                            <CarCommentsSidebar
-                                carId={carId}
-                                locale={locale}
-                                currentUser={user ? { id: user.id, avatar: user.avatar, name: user.name } : null}
-                            />
-                        )}
+                        {/* Blog Posts */}
+                        <BlogSidebar carId={carId} locale={locale} isOwner={isOwner} />
                     </div>
                 </div>
             </div>
@@ -857,23 +822,45 @@ function SpecItem({ icon: Icon, label, value, sub }: { icon: any; label: string;
     )
 }
 
-function PowerMetric({ label, value, unit, stock, verified, ranking }: {
+function PowerMetric({ label, value, unit, stock, verified, hasPendingProof, isStock, ranking }: {
     label: string
     value: number
     unit: string
     stock?: number | null
     verified?: boolean
+    hasPendingProof?: boolean
+    isStock?: boolean
     ranking?: { rank: number; total: number; percentile: number } | null
 }) {
     const diff = stock && stock > 0 ? ((value - stock) / stock) * 100 : 0
     const isGain = diff > 0
 
+    // Get badge configuration
+    const getBadge = () => {
+        if (verified) {
+            return { icon: BadgeCheck, label: 'Verified', color: 'text-green-500', bgColor: 'bg-green-500/10 border-green-500/20' }
+        }
+        if (hasPendingProof) {
+            return { icon: Clock, label: 'Pending', color: 'text-yellow-500', bgColor: 'bg-yellow-500/10 border-yellow-500/20' }
+        }
+        if (isStock) {
+            return { icon: Zap, label: 'Stock', color: 'text-blue-500', bgColor: 'bg-blue-500/10 border-blue-500/20' }
+        }
+        return { icon: AlertCircle, label: 'Unverified', color: 'text-zinc-500', bgColor: 'bg-zinc-500/10 border-zinc-500/20' }
+    }
+
+    const badge = getBadge()
+    const BadgeIcon = badge.icon
+
     return (
-        <div className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800 hover:border-zinc-700 transition-colors group relative">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1 flex items-center justify-between">
-                {label}
-                {verified && <BadgeCheck className="w-3 h-3 text-green-500" />}
-            </p>
+        <div className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800 hover:border-zinc-700 transition-colors group relative overflow-hidden">
+            <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-xs text-zinc-500 uppercase tracking-wide truncate">{label}</p>
+                <span className={`shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${badge.bgColor} ${badge.color}`}>
+                    <BadgeIcon className="w-3 h-3 shrink-0" />
+                    {badge.label}
+                </span>
+            </div>
             <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-white group-hover:text-orange-400 transition-colors">{value}</span>
                 <span className="text-xs text-zinc-600 font-medium">{unit}</span>

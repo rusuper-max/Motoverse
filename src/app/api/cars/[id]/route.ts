@@ -105,7 +105,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const car = await prisma.car.update({
       where: { id },
       data: {
-        year: year !== undefined ? (year ? parseInt(String(year), 10) : null) : undefined,
+        year: year !== undefined && year ? parseInt(String(year), 10) : undefined,
         nickname: nickname !== undefined ? nickname || null : undefined,
         description: description !== undefined ? description || null : undefined,
         image: image !== undefined ? image || null : undefined,
