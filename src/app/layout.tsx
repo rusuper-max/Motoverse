@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Motoverse - Car Enthusiast Social Network",
+  title: "MachineBio - Car Enthusiast Social Network",
   description: "Share your garage, document your builds, connect with car people",
 };
 

@@ -149,7 +149,7 @@ export default function RegisterPage() {
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
           <Car className="w-6 h-6 text-white" />
         </div>
-        <span className="text-2xl font-bold text-white">Motoverse</span>
+        <span className="text-2xl font-bold text-white">MachineBio</span>
       </Link>
 
       {/* Form Card */}

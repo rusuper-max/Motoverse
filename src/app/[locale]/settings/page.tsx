@@ -188,13 +188,13 @@ export default function SettingsPage() {
       const filePath = `${authUser.id}/${folderPath}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('motoverse_photos')
+        .from('machinebio-photos')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('motoverse_photos')
+        .from('machinebio-photos')
         .getPublicUrl(filePath)
 
       // Update user profile with new image URL

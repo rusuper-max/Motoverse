@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Home, Search, PlusCircle, User, Menu, X, LayoutGrid, Globe, LogOut, CalendarDays, Trophy, Bell, Zap, MessageCircle } from 'lucide-react'
+import { Car, Home, Search, PlusCircle, User, Menu, X, LayoutGrid, Globe, LogOut, CalendarDays, Trophy, Bell, Zap, MessageCircle, Camera } from 'lucide-react'
 import Button from '../ui/Button'
 import { Locale, locales, localeNames, localeFlags } from '@/i18n/config'
 import { Dictionary } from '@/i18n'
@@ -163,7 +163,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
               <Car className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">Motoverse</span>
+            <span className="text-xl font-bold text-white">MachineBio</span>
           </Link>
 
           {/* Center Section - Search (authenticated) or Navigation (non-authenticated) */}
@@ -216,6 +216,13 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               >
                 <Trophy className="w-4 h-4" />
                 <span>Ranks</span>
+              </Link>
+              <Link
+                href={localePath('/spots')}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Spots</span>
               </Link>
             </div>
           )}
@@ -453,6 +460,13 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               >
                 <Trophy className="w-5 h-5" />
                 <span>Leaderboards</span>
+              </Link>
+              <Link
+                href={localePath('/spots')}
+                className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Spots</span>
               </Link>
 
               {/* Mobile Language Switcher */}

@@ -1,7 +1,7 @@
 export default {
   // Common
   common: {
-    appName: 'Motoverse',
+    appName: 'MachineBio',
     loading: 'Loading...',
     error: 'Something went wrong',
     save: 'Save',
@@ -72,7 +72,7 @@ export default {
       },
     },
     howItWorks: {
-      title: 'How Motoverse works',
+      title: 'How MachineBio works',
       step1: {
         title: '1. Add your cars',
         description: 'Create your digital garage. Add all your current and past vehicles with specs and photos.',
@@ -140,7 +140,7 @@ export default {
     terms: 'Terms',
     privacy: 'Privacy',
     contact: 'Contact',
-    copyright: '© {year} Motoverse. All rights reserved.',
+    copyright: '© {year} MachineBio. All rights reserved.',
   },
 
   // Garage
@@ -218,11 +218,72 @@ export default {
     editProfile: 'Edit Profile',
   },
 
+  // Car Spotting
+  spots: {
+    title: 'Car Spotting',
+    subtitle: 'Spot rare cars in the wild',
+    newSpot: 'New Spot',
+    uploadPhoto: 'Upload Photo',
+    location: 'Location',
+    detectLocation: 'Detect my location',
+    enterManually: 'Enter manually',
+    locationPlaceholder: 'e.g., Munich, Germany',
+    isChallenge: 'Make this a guessing challenge',
+    challengeHint: 'Others will try to guess what car this is',
+    correctAnswer: 'Correct answer',
+    correctAnswerPlaceholder: 'e.g., Porsche 911 GT3',
+    correctAnswerHint: 'Hidden from others until you reveal',
+    makeLabel: 'Make',
+    makePlaceholder: 'e.g., Porsche',
+    modelLabel: 'Model',
+    modelPlaceholder: 'e.g., 911 GT3',
+    yearLabel: 'Year (optional)',
+    yearPlaceholder: 'e.g., 2023',
+    caption: 'Caption',
+    captionPlaceholder: 'Tell us about this spot...',
+    submit: 'Post Spot',
+    posting: 'Posting...',
+    guess: 'Submit Guess',
+    guessing: 'Submitting...',
+    reveal: 'Reveal Answer',
+    revealing: 'Revealing...',
+    rarity: 'Rarity',
+    rarityHint: 'How rare is this car? (1 = common, 10 = unicorn)',
+    comments: 'Comments',
+    guesses: 'Guesses',
+    noGuessesYet: 'No guesses yet',
+    yourGuess: 'Your guess',
+    correctGuess: 'Correct!',
+    incorrectGuess: 'Not quite',
+    waitingForReveal: 'Waiting for reveal...',
+    alreadyGuessed: 'You already guessed',
+    challengeRevealed: 'Challenge revealed!',
+    spotBy: 'Spotted by',
+    filters: {
+      all: 'All Spots',
+      challenges: 'Challenges',
+      mySpots: 'My Spots',
+    },
+    empty: 'No spots yet. Be the first to spot a car!',
+    emptyMine: 'You haven\'t spotted any cars yet',
+    emptyChallenges: 'No challenges available',
+    guessPlaceholder: 'What car is this?',
+    back: 'Back to Spots',
+    deleteSpot: 'Delete Spot',
+    confirmDelete: 'Are you sure you want to delete this spot?',
+    errors: {
+      imageRequired: 'Please upload an image',
+      answerRequired: 'Please enter the correct answer for the challenge',
+      makeModelRequired: 'Please enter make and model',
+      failed: 'Something went wrong. Please try again.',
+    },
+  },
+
   // Auth
   auth: {
     register: {
       title: 'Create your account',
-      subtitle: 'Join the Motoverse community',
+      subtitle: 'Join the MachineBio community',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       usernameLabel: 'Username',
@@ -248,7 +309,7 @@ export default {
     },
     login: {
       title: 'Welcome back',
-      subtitle: 'Sign in to your Motoverse account',
+      subtitle: 'Sign in to your MachineBio account',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       passwordLabel: 'Password',

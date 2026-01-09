@@ -1,7 +1,7 @@
 export default {
   // Common
   common: {
-    appName: 'Motoverse',
+    appName: 'MachineBio',
     loading: 'Učitavanje...',
     error: 'Došlo je do greške',
     save: 'Sačuvaj',
@@ -72,7 +72,7 @@ export default {
       },
     },
     howItWorks: {
-      title: 'Kako Motoverse funkcioniše',
+      title: 'Kako MachineBio funkcioniše',
       step1: {
         title: '1. Dodaj svoje automobile',
         description: 'Kreiraj svoju digitalnu garažu. Dodaj sve svoje sadašnje i prošle automobile sa specifikacijama i fotografijama.',
@@ -140,7 +140,7 @@ export default {
     terms: 'Uslovi',
     privacy: 'Privatnost',
     contact: 'Kontakt',
-    copyright: '© {year} Motoverse. Sva prava zadržana.',
+    copyright: '© {year} MachineBio. Sva prava zadržana.',
   },
 
   // Garage
@@ -218,11 +218,72 @@ export default {
     editProfile: 'Izmeni Profil',
   },
 
+  // Car Spotting
+  spots: {
+    title: 'Car Spotting',
+    subtitle: 'Pronađi retke automobile na ulici',
+    newSpot: 'Novi Spot',
+    uploadPhoto: 'Otpremi Fotografiju',
+    location: 'Lokacija',
+    detectLocation: 'Otkrij moju lokaciju',
+    enterManually: 'Unesi ručno',
+    locationPlaceholder: 'npr., Beograd, Srbija',
+    isChallenge: 'Napravi izazov za pogađanje',
+    challengeHint: 'Drugi će pokušati da pogode koji je automobil',
+    correctAnswer: 'Tačan odgovor',
+    correctAnswerPlaceholder: 'npr., Porsche 911 GT3',
+    correctAnswerHint: 'Skriveno od drugih do otkrivanja',
+    makeLabel: 'Marka',
+    makePlaceholder: 'npr., Porsche',
+    modelLabel: 'Model',
+    modelPlaceholder: 'npr., 911 GT3',
+    yearLabel: 'Godina (opciono)',
+    yearPlaceholder: 'npr., 2023',
+    caption: 'Opis',
+    captionPlaceholder: 'Reci nam nešto o ovom spotu...',
+    submit: 'Objavi Spot',
+    posting: 'Objavljivanje...',
+    guess: 'Pogodi',
+    guessing: 'Slanje...',
+    reveal: 'Otkrij Odgovor',
+    revealing: 'Otkrivanje...',
+    rarity: 'Retkost',
+    rarityHint: 'Koliko je redak ovaj automobil? (1 = čest, 10 = jednorog)',
+    comments: 'Komentari',
+    guesses: 'Pogađanja',
+    noGuessesYet: 'Još nema pogađanja',
+    yourGuess: 'Tvoje pogađanje',
+    correctGuess: 'Tačno!',
+    incorrectGuess: 'Nije baš',
+    waitingForReveal: 'Čekanje otkrivanja...',
+    alreadyGuessed: 'Već si pogađao',
+    challengeRevealed: 'Izazov otkriven!',
+    spotBy: 'Spotovao',
+    filters: {
+      all: 'Svi Spotovi',
+      challenges: 'Izazovi',
+      mySpots: 'Moji Spotovi',
+    },
+    empty: 'Još nema spotova. Budi prvi!',
+    emptyMine: 'Još nisi spotovao nijedan automobil',
+    emptyChallenges: 'Nema dostupnih izazova',
+    guessPlaceholder: 'Koji je ovo automobil?',
+    back: 'Nazad na Spotove',
+    deleteSpot: 'Obriši Spot',
+    confirmDelete: 'Da li si siguran da želiš da obrišeš ovaj spot?',
+    errors: {
+      imageRequired: 'Molimo otpremi sliku',
+      answerRequired: 'Molimo unesi tačan odgovor za izazov',
+      makeModelRequired: 'Molimo unesi marku i model',
+      failed: 'Nešto je pošlo naopako. Pokušaj ponovo.',
+    },
+  },
+
   // Auth (English placeholders for now)
   auth: {
     register: {
       title: 'Create your account',
-      subtitle: 'Join the Motoverse community',
+      subtitle: 'Join the MachineBio community',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       usernameLabel: 'Username',
@@ -248,7 +309,7 @@ export default {
     },
     login: {
       title: 'Welcome back',
-      subtitle: 'Sign in to your Motoverse account',
+      subtitle: 'Sign in to your MachineBio account',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       passwordLabel: 'Password',

@@ -1,7 +1,7 @@
 export default {
   // Common
   common: {
-    appName: 'Motoverse',
+    appName: 'MachineBio',
     loading: 'Lädt...',
     error: 'Etwas ist schiefgelaufen',
     save: 'Speichern',
@@ -72,7 +72,7 @@ export default {
       },
     },
     howItWorks: {
-      title: 'So funktioniert Motoverse',
+      title: 'So funktioniert MachineBio',
       step1: {
         title: '1. Füge deine Autos hinzu',
         description: 'Erstelle deine digitale Garage. Füge alle deine aktuellen und früheren Fahrzeuge mit Spezifikationen und Fotos hinzu.',
@@ -140,7 +140,7 @@ export default {
     terms: 'AGB',
     privacy: 'Datenschutz',
     contact: 'Kontakt',
-    copyright: '© {year} Motoverse. Alle Rechte vorbehalten.',
+    copyright: '© {year} MachineBio. Alle Rechte vorbehalten.',
   },
 
   // Garage (English placeholders)
@@ -218,11 +218,72 @@ export default {
     editProfile: 'Profil bearbeiten',
   },
 
+  // Car Spotting
+  spots: {
+    title: 'Car Spotting',
+    subtitle: 'Entdecke seltene Autos in freier Wildbahn',
+    newSpot: 'Neuer Spot',
+    uploadPhoto: 'Foto hochladen',
+    location: 'Standort',
+    detectLocation: 'Meinen Standort erkennen',
+    enterManually: 'Manuell eingeben',
+    locationPlaceholder: 'z.B. München, Deutschland',
+    isChallenge: 'Als Rate-Challenge erstellen',
+    challengeHint: 'Andere werden versuchen zu erraten, welches Auto das ist',
+    correctAnswer: 'Richtige Antwort',
+    correctAnswerPlaceholder: 'z.B. Porsche 911 GT3',
+    correctAnswerHint: 'Für andere versteckt bis zur Auflösung',
+    makeLabel: 'Marke',
+    makePlaceholder: 'z.B. Porsche',
+    modelLabel: 'Modell',
+    modelPlaceholder: 'z.B. 911 GT3',
+    yearLabel: 'Jahr (optional)',
+    yearPlaceholder: 'z.B. 2023',
+    caption: 'Beschreibung',
+    captionPlaceholder: 'Erzähl uns von diesem Spot...',
+    submit: 'Spot posten',
+    posting: 'Wird gepostet...',
+    guess: 'Tipp abgeben',
+    guessing: 'Wird gesendet...',
+    reveal: 'Antwort enthüllen',
+    revealing: 'Wird enthüllt...',
+    rarity: 'Seltenheit',
+    rarityHint: 'Wie selten ist dieses Auto? (1 = häufig, 10 = Einhorn)',
+    comments: 'Kommentare',
+    guesses: 'Tipps',
+    noGuessesYet: 'Noch keine Tipps',
+    yourGuess: 'Dein Tipp',
+    correctGuess: 'Richtig!',
+    incorrectGuess: 'Nicht ganz',
+    waitingForReveal: 'Warte auf Enthüllung...',
+    alreadyGuessed: 'Du hast bereits getippt',
+    challengeRevealed: 'Challenge enthüllt!',
+    spotBy: 'Gespottet von',
+    filters: {
+      all: 'Alle Spots',
+      challenges: 'Challenges',
+      mySpots: 'Meine Spots',
+    },
+    empty: 'Noch keine Spots. Sei der Erste!',
+    emptyMine: 'Du hast noch keine Autos gespottet',
+    emptyChallenges: 'Keine Challenges verfügbar',
+    guessPlaceholder: 'Welches Auto ist das?',
+    back: 'Zurück zu Spots',
+    deleteSpot: 'Spot löschen',
+    confirmDelete: 'Bist du sicher, dass du diesen Spot löschen möchtest?',
+    errors: {
+      imageRequired: 'Bitte lade ein Bild hoch',
+      answerRequired: 'Bitte gib die richtige Antwort für die Challenge ein',
+      makeModelRequired: 'Bitte gib Marke und Modell ein',
+      failed: 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+    },
+  },
+
   // Auth (English placeholders for now)
   auth: {
     register: {
       title: 'Create your account',
-      subtitle: 'Join the Motoverse community',
+      subtitle: 'Join the MachineBio community',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       usernameLabel: 'Username',
@@ -248,7 +309,7 @@ export default {
     },
     login: {
       title: 'Welcome back',
-      subtitle: 'Sign in to your Motoverse account',
+      subtitle: 'Sign in to your MachineBio account',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       passwordLabel: 'Password',

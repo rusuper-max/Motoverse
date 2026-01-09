@@ -199,13 +199,13 @@ export default function EditCarPage() {
       const filePath = `${user.id}/cars/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('motoverse-photos')
+        .from('machinebio-photos')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('motoverse-photos')
+        .from('machinebio-photos')
         .getPublicUrl(filePath)
 
       setThumbnail(publicUrl)

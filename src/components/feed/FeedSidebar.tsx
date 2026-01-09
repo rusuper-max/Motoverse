@@ -14,7 +14,8 @@ import {
   PlusCircle,
   TrendingUp,
   MessageSquare,
-  Bell
+  Bell,
+  Camera
 } from 'lucide-react'
 
 interface FeedSidebarProps {
@@ -34,6 +35,7 @@ export default function FeedSidebar({ locale, user }: FeedSidebarProps) {
     { href: `/${locale}/feed`, label: 'Feed', icon: Home },
     { href: `/${locale}/explore`, label: 'Explore', icon: Search },
     { href: `/${locale}/garage`, label: 'My Garage', icon: Car },
+    { href: `/${locale}/spots`, label: 'Car Spotting', icon: Camera },
     { href: `/${locale}/events`, label: 'Events', icon: CalendarDays },
     { href: `/${locale}/leaderboards`, label: 'Leaderboards', icon: Trophy },
   ]
@@ -117,6 +119,13 @@ export default function FeedSidebar({ locale, user }: FeedSidebarProps) {
                 <MessageSquare className="w-5 h-5" />
                 <span className="font-medium">New Post</span>
               </Link>
+              <Link
+                href={`/${locale}/spots/new`}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+              >
+                <Camera className="w-5 h-5" />
+                <span className="font-medium">New Spot</span>
+              </Link>
             </div>
           </div>
         )}
@@ -148,7 +157,7 @@ export default function FeedSidebar({ locale, user }: FeedSidebarProps) {
             <Link href={`/${locale}/privacy`} className="hover:text-zinc-400">Privacy</Link>
             <Link href={`/${locale}/contact`} className="hover:text-zinc-400">Contact</Link>
           </div>
-          <p>&copy; 2025 Motoverse</p>
+          <p>&copy; 2025 MachineBio</p>
         </div>
       </div>
     </aside>

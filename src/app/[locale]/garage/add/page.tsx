@@ -756,7 +756,7 @@ export default function AddCarPage() {
                   value={images}
                   onChange={(newImages) => setImages(newImages)}
                   onRemove={(urlToRemove) => setImages(prev => prev.filter(url => url !== urlToRemove))}
-                  bucket="motoverse-photos"
+                  bucket="machinebio-photos"
                   folderPath="cars"
                   maxFiles={10}
                 />

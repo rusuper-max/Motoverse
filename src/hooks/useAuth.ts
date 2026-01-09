@@ -111,5 +111,5 @@ export function useAuth() {
 
 // Trigger auth refresh from anywhere (e.g., after login/register)
 export function triggerAuthRefresh() {
-  window.dispatchEvent(new CustomEvent('MOTOVERSE_AUTH_CHANGED'))
+  window.dispatchEvent(new CustomEvent('MACHINEBIO_AUTH_CHANGED'))
 }

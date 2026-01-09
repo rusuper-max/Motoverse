@@ -125,7 +125,7 @@ export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) 
         const filePath = `${user.id}/albums/${carId}/${fileName}`
 
         const { error: uploadError } = await supabase.storage
-          .from('motoverse-photos')
+          .from('machinebio-photos')
           .upload(filePath, file)
 
         if (uploadError) {
@@ -134,7 +134,7 @@ export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) 
         }
 
         const { data: { publicUrl } } = supabase.storage
-          .from('motoverse-photos')
+          .from('machinebio-photos')
           .getPublicUrl(filePath)
 
         // Save to database
@@ -347,10 +347,10 @@ export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) 
       {/* Photo Viewer Modal */}
       {selectedPhoto && (
         <div className="fixed inset-0 z-50 bg-black/95 flex" onClick={closePhoto}>
-          {/* Close button */}
+          {/* Close button - positioned to the left of the sidebar */}
           <button
             onClick={closePhoto}
-            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white transition-colors z-10"
+            className="absolute top-4 right-[340px] p-2 text-zinc-400 hover:text-white transition-colors z-10"
           >
             <X className="w-6 h-6" />
           </button>

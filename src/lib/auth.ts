@@ -4,7 +4,7 @@ import { prisma } from './prisma'
 
 // Session configuration
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-in-production'
-const SESSION_COOKIE_NAME = 'motoverse_session'
+const SESSION_COOKIE_NAME = 'machinebio_session'
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
 // Secret key for JWT signing

@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: Props) {
   if (!make) return { title: 'Not Found' }
 
   return {
-    title: `${make.name} Models - Motoverse`,
+    title: `${make.name} Models - MachineBio`,
     description: `Browse all ${make.name} models and see cars from the community`,
   }
 }

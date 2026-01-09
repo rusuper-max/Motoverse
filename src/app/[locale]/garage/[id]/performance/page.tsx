@@ -87,7 +87,7 @@ export default function SubmitPerformancePage() {
             const filePath = `${user.id}/performance/${carId}/${fileName}`
 
             const { error: uploadError } = await supabase.storage
-                .from('motoverse-photos')
+                .from('machinebio-photos')
                 .upload(filePath, file)
 
             if (uploadError) {
@@ -97,7 +97,7 @@ export default function SubmitPerformancePage() {
             }
 
             const { data: { publicUrl } } = supabase.storage
-                .from('motoverse-photos')
+                .from('machinebio-photos')
                 .getPublicUrl(filePath)
 
             setProofUrl(publicUrl)

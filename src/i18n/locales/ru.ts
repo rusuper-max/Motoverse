@@ -1,7 +1,7 @@
 export default {
   // Common
   common: {
-    appName: 'Motoverse',
+    appName: 'MachineBio',
     loading: 'Загрузка...',
     error: 'Что-то пошло не так',
     save: 'Сохранить',
@@ -72,7 +72,7 @@ export default {
       },
     },
     howItWorks: {
-      title: 'Как работает Motoverse',
+      title: 'Как работает MachineBio',
       step1: {
         title: '1. Добавь свои машины',
         description: 'Создай свой цифровой гараж. Добавь все свои текущие и прошлые машины с характеристиками и фотографиями.',
@@ -140,7 +140,7 @@ export default {
     terms: 'Условия',
     privacy: 'Конфиденциальность',
     contact: 'Контакты',
-    copyright: '© {year} Motoverse. Все права защищены.',
+    copyright: '© {year} MachineBio. Все права защищены.',
   },
 
   // Garage (English placeholders)
@@ -218,11 +218,72 @@ export default {
     editProfile: 'Редактировать Профиль',
   },
 
+  // Car Spotting
+  spots: {
+    title: 'Car Spotting',
+    subtitle: 'Находи редкие машины на улицах',
+    newSpot: 'Новый Спот',
+    uploadPhoto: 'Загрузить Фото',
+    location: 'Местоположение',
+    detectLocation: 'Определить моё местоположение',
+    enterManually: 'Ввести вручную',
+    locationPlaceholder: 'напр., Москва, Россия',
+    isChallenge: 'Сделать челлендж-загадку',
+    challengeHint: 'Другие будут угадывать, что это за машина',
+    correctAnswer: 'Правильный ответ',
+    correctAnswerPlaceholder: 'напр., Porsche 911 GT3',
+    correctAnswerHint: 'Скрыто от других до раскрытия',
+    makeLabel: 'Марка',
+    makePlaceholder: 'напр., Porsche',
+    modelLabel: 'Модель',
+    modelPlaceholder: 'напр., 911 GT3',
+    yearLabel: 'Год (необязательно)',
+    yearPlaceholder: 'напр., 2023',
+    caption: 'Описание',
+    captionPlaceholder: 'Расскажи об этом споте...',
+    submit: 'Опубликовать',
+    posting: 'Публикация...',
+    guess: 'Угадать',
+    guessing: 'Отправка...',
+    reveal: 'Раскрыть Ответ',
+    revealing: 'Раскрытие...',
+    rarity: 'Редкость',
+    rarityHint: 'Насколько редка эта машина? (1 = обычная, 10 = единорог)',
+    comments: 'Комментарии',
+    guesses: 'Догадки',
+    noGuessesYet: 'Пока нет догадок',
+    yourGuess: 'Твоя догадка',
+    correctGuess: 'Правильно!',
+    incorrectGuess: 'Не совсем',
+    waitingForReveal: 'Ожидание раскрытия...',
+    alreadyGuessed: 'Ты уже угадывал',
+    challengeRevealed: 'Челлендж раскрыт!',
+    spotBy: 'Обнаружил',
+    filters: {
+      all: 'Все Споты',
+      challenges: 'Челленджи',
+      mySpots: 'Мои Споты',
+    },
+    empty: 'Пока нет спотов. Будь первым!',
+    emptyMine: 'Ты ещё не обнаружил ни одной машины',
+    emptyChallenges: 'Нет доступных челленджей',
+    guessPlaceholder: 'Что это за машина?',
+    back: 'Назад к Спотам',
+    deleteSpot: 'Удалить Спот',
+    confirmDelete: 'Уверен, что хочешь удалить этот спот?',
+    errors: {
+      imageRequired: 'Пожалуйста, загрузи изображение',
+      answerRequired: 'Пожалуйста, введи правильный ответ для челленджа',
+      makeModelRequired: 'Пожалуйста, введи марку и модель',
+      failed: 'Что-то пошло не так. Попробуй ещё раз.',
+    },
+  },
+
   // Auth (English placeholders for now)
   auth: {
     register: {
       title: 'Create your account',
-      subtitle: 'Join the Motoverse community',
+      subtitle: 'Join the MachineBio community',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       usernameLabel: 'Username',
@@ -248,7 +309,7 @@ export default {
     },
     login: {
       title: 'Welcome back',
-      subtitle: 'Sign in to your Motoverse account',
+      subtitle: 'Sign in to your MachineBio account',
       emailLabel: 'Email address',
       emailPlaceholder: 'you@example.com',
       passwordLabel: 'Password',

@@ -9,7 +9,7 @@ interface Props {
 }
 
 export const metadata = {
-  title: 'Car Catalog - Motoverse',
+  title: 'Car Catalog - MachineBio',
   description: 'Browse all car makes and models',
 }
 

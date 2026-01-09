@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff, BadgeCheck, Zap, Clock, Upload } from 'lucide-react'
+import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff, BadgeCheck, Zap, Clock, Upload, Info, AlertCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import RevLimiterRating from '@/components/ui/RevLimiterRating'
 import HistoryCard from '@/components/HistoryCard'
@@ -438,42 +438,22 @@ export default function CarDetailPage() {
                                     {/* Quick Stats */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                                         {car.horsepower && (
-                                            <div className="bg-zinc-800/50 rounded-lg p-3 text-center relative">
-                                                <p className="text-2xl font-bold text-white">{car.horsepower}</p>
-                                                <p className="text-xs text-zinc-500">HP</p>
-                                                {/* Verification badges */}
-                                                {car.dynoVerified && (
-                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full shadow-lg">
-                                                        <BadgeCheck className="w-3 h-3" />
-                                                        Verified
-                                                    </div>
-                                                )}
-                                                {!car.dynoVerified && car.engineConfig?.horsepower && car.horsepower === car.engineConfig.horsepower && (
-                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full shadow-lg">
-                                                        <Zap className="w-3 h-3" />
-                                                        Stock
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <PowerStatBadge
+                                                value={car.horsepower}
+                                                unit="HP"
+                                                isVerified={car.dynoVerified}
+                                                isStock={!car.dynoVerified && car.engineConfig?.horsepower === car.horsepower}
+                                                hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
+                                            />
                                         )}
                                         {car.torque && (
-                                            <div className="bg-zinc-800/50 rounded-lg p-3 text-center relative">
-                                                <p className="text-2xl font-bold text-white">{car.torque}</p>
-                                                <p className="text-xs text-zinc-500">Nm</p>
-                                                {/* Verification badges */}
-                                                {car.dynoVerified && (
-                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full shadow-lg">
-                                                        <BadgeCheck className="w-3 h-3" />
-                                                        Verified
-                                                    </div>
-                                                )}
-                                                {!car.dynoVerified && car.engineConfig?.torque && car.torque === car.engineConfig.torque && (
-                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full shadow-lg">
-                                                        <Zap className="w-3 h-3" />
-                                                        Stock
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <PowerStatBadge
+                                                value={car.torque}
+                                                unit="Nm"
+                                                isVerified={car.dynoVerified}
+                                                isStock={!car.dynoVerified && car.engineConfig?.torque === car.torque}
+                                                hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
+                                            />
                                         )}
                                         {car.mileage && (
                                             <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
@@ -996,6 +976,74 @@ function SpecDisplaySection({ title, items }: { title: string; items: { label: s
     )
 }
 
+function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof }: {
+    value: number
+    unit: string
+    isVerified: boolean
+    isStock: boolean
+    hasPendingProof: boolean
+}) {
+    const [showTooltip, setShowTooltip] = useState(false)
+
+    const getBadgeConfig = () => {
+        if (isVerified) {
+            return {
+                icon: BadgeCheck,
+                label: 'Verified',
+                bgColor: 'bg-green-500',
+                tooltip: 'Power verified with dyno proof by admin'
+            }
+        }
+        if (hasPendingProof) {
+            return {
+                icon: Clock,
+                label: 'Pending',
+                bgColor: 'bg-yellow-500',
+                tooltip: 'Verification pending - dyno proof submitted'
+            }
+        }
+        if (isStock) {
+            return {
+                icon: Zap,
+                label: 'Stock',
+                bgColor: 'bg-blue-500',
+                tooltip: 'Matches factory specifications'
+            }
+        }
+        return {
+            icon: AlertCircle,
+            label: 'Unverified',
+            bgColor: 'bg-zinc-600',
+            tooltip: 'User-reported value - not verified'
+        }
+    }
+
+    const badge = getBadgeConfig()
+    const Icon = badge.icon
+
+    return (
+        <div className="bg-zinc-800/50 rounded-lg p-3 text-center relative">
+            <p className="text-2xl font-bold text-white">{value}</p>
+            <p className="text-xs text-zinc-500">{unit}</p>
+            <div
+                className="absolute -top-2 -right-2 cursor-help"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+            >
+                <div className={`flex items-center gap-1 px-2 py-0.5 ${badge.bgColor} text-white text-[10px] font-bold rounded-full shadow-lg`}>
+                    <Icon className="w-3 h-3" />
+                    {badge.label}
+                </div>
+                {showTooltip && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-48 p-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl text-xs text-zinc-300 text-left">
+                        {badge.tooltip}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
 function PowerVerificationSection({ car, isOwner, onUpdate }: { car: CarData; isOwner: boolean; onUpdate: () => void }) {
     const [uploading, setUploading] = useState(false)
     const [showUploadForm, setShowUploadForm] = useState(false)
@@ -1018,7 +1066,7 @@ function PowerVerificationSection({ car, isOwner, onUpdate }: { car: CarData; is
             const filePath = `${user.id}/dyno/${car.id}/${fileName}`
 
             const { error: uploadError } = await supabase.storage
-                .from('motoverse-photos')
+                .from('machinebio-photos')
                 .upload(filePath, file)
 
             if (uploadError) {
@@ -1028,7 +1076,7 @@ function PowerVerificationSection({ car, isOwner, onUpdate }: { car: CarData; is
             }
 
             const { data: { publicUrl } } = supabase.storage
-                .from('motoverse-photos')
+                .from('machinebio-photos')
                 .getPublicUrl(filePath)
 
             // Submit verification request
