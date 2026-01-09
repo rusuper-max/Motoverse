@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth'
 
 // GET /api/spots - List all spots with pagination and filtering
