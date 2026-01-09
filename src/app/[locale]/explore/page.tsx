@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Search, Car, FileText, Heart, MessageCircle, Calendar, User, Loader2, Star, Activity, Zap } from 'lucide-react'
@@ -78,6 +78,18 @@ interface FeedItem {
 }
 
 export default function ExplorePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    }>
+      <ExploreContent />
+    </Suspense>
+  )
+}
+
+function ExploreContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const locale = params?.locale as string || 'en'
