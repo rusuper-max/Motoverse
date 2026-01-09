@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth'
+import { notifyCarOwnerAboutRating } from '@/lib/notifications'
 
 interface RouteParams {
     params: Promise<{ id: string }>
@@ -83,6 +84,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         // Upsert rating (one per user per car)
+        // Check if this is a new rating (not an update)
+        const existingRating = await prisma.carRating.findUnique({
+            where: { carId_userId: { carId, userId: user.id } },
+        })
+
         const carRating = await prisma.carRating.upsert({
             where: {
                 carId_userId: { carId, userId: user.id },
@@ -108,6 +114,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 },
             },
         })
+
+        // Notify car owner about the new rating (only for new ratings, not updates)
+        if (!existingRating) {
+            await notifyCarOwnerAboutRating(carId, user.id, rating)
+        }
 
         return NextResponse.json({ rating: carRating }, { status: 201 })
     } catch (error) {

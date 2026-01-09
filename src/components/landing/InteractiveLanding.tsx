@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, ReactNode } from 'react'
-import { Car, Wrench, Users, ShoppingBag, Sparkles, LucideIcon } from 'lucide-react'
+import { useRouter, useParams } from 'next/navigation'
+import { Car, Wrench, Users, ShoppingBag, Sparkles, LucideIcon, Loader2 } from 'lucide-react'
 import GearShifter, { GearPosition, useGearScroll } from './GearShifter'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Feature {
   id: string
@@ -41,12 +43,38 @@ const gearToFeatureIndex = (gear: GearPosition): number | null => {
 }
 
 export default function InteractiveLanding({ features, children, dict }: InteractiveLandingProps) {
+  const { authenticated, loading } = useAuth()
+  const router = useRouter()
+  const params = useParams()
+  const locale = params?.locale as string || 'en'
+  const [shouldShow, setShouldShow] = useState(false)
+
   const [currentGear, setCurrentGear] = useState<GearPosition>('N')
   const featureRefs = useRef<(HTMLDivElement | null)[]>([])
   const shifterSectionRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   const { shiftUp, shiftDown } = useGearScroll(currentGear, setCurrentGear)
+
+  // Auth redirect - handle before showing landing page
+  useEffect(() => {
+    if (!loading) {
+      if (authenticated) {
+        router.replace(`/${locale}/feed`)
+      } else {
+        setShouldShow(true)
+      }
+    }
+  }, [authenticated, loading, router, locale])
+
+  // Show loading state while checking auth
+  if (loading || !shouldShow) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    )
+  }
 
   // Handle scroll events to shift gears when in the interactive section
   useEffect(() => {

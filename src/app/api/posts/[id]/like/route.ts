@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth'
+import { notifyPostAuthorAboutLike } from '@/lib/notifications'
 
 interface RouteParams {
     params: Promise<{ id: string }>
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                     userId: user.id,
                 },
             })
+            // Notify post author about the like
+            await notifyPostAuthorAboutLike(postId, user.id)
             return NextResponse.json({ liked: true })
         }
     } catch (error) {

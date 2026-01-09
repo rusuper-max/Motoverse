@@ -17,7 +17,15 @@ export interface SessionUser {
   username: string
   name?: string | null
   avatar?: string | null
+  role?: string
+  isVerified?: boolean
+  profileCompleted?: boolean
 }
+
+// Founder email - gets founder role (highest privilege)
+const FOUNDER_EMAILS = ['rusuper@gmail.com']
+// Admin emails - these users get admin role on login
+const ADMIN_EMAILS: string[] = []
 
 // Cookie configuration
 export const COOKIE_BASE = {
@@ -103,11 +111,34 @@ export async function getSessionUser(req?: Request): Promise<SessionUser | null>
         email: true,
         username: true,
         name: true,
-        avatar: true
+        avatar: true,
+        role: true,
+        isVerified: true,
+        profileCompleted: true,
       }
     })
 
     if (!user) return null
+
+    // Auto-promote founder users
+    const emailLower = user.email.toLowerCase()
+    if (FOUNDER_EMAILS.includes(emailLower) && user.role !== 'founder') {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'founder', isVerified: true }
+      })
+      user.role = 'founder'
+      user.isVerified = true
+    }
+    // Auto-promote admin users
+    else if (ADMIN_EMAILS.includes(emailLower) && user.role !== 'admin' && user.role !== 'founder') {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'admin', isVerified: true }
+      })
+      user.role = 'admin'
+      user.isVerified = true
+    }
 
     return user
   } catch (error) {

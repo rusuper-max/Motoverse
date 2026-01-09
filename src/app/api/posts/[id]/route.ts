@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
         const { id } = await params
         const body = await request.json()
-        const { title, content } = body
+        const { title, content, category, mileage, cost } = body
 
         const post = await prisma.post.findUnique({ where: { id } })
         if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
@@ -85,7 +85,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
         const updated = await prisma.post.update({
             where: { id },
-            data: { title, content },
+            data: {
+                title,
+                content,
+                ...(category !== undefined && { category }),
+                ...(mileage !== undefined && { mileage }),
+                ...(cost !== undefined && { cost }),
+            },
         })
 
         return NextResponse.json({ post: updated })

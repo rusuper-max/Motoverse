@@ -19,11 +19,24 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Admin & roles
+  role          String    @default("user")  // user, admin, moderator
+  isVerified    Boolean   @default(false)   // Verified badge
+
+  // Profile completion
+  profileCompleted Boolean @default(false)
+  country       String?
+  accountType   String?   // enthusiast, mechanic, tuner, dealer, racer, collector
+  website       String?
+  socialLinks   Json?     // { instagram, youtube, tiktok, etc }
+
   cars          Car[]
   posts         Post[]
   comments      Comment[]
   likes         Like[]
   commentLikes  CommentLike[]
+  carComments   CarComment[]
+  carCommentLikes CarCommentLike[]
   followers     Follow[]  @relation("following")
   following     Follow[]  @relation("follower")
   listings      Listing[]
@@ -32,6 +45,13 @@ model User {
   eventAttendances EventAttendee[]
   carRatings    CarRating[]
   historyNodes  HistoryNode[]
+  carFollows    CarFollow[]
+  notifications Notification[] @relation("notifications")
+  notificationsTriggered Notification[] @relation("notificationActor")
+  carPhotos     CarPhoto[]
+  carPhotoRatings CarPhotoRating[]
+  carPhotoComments CarPhotoComment[]
+  carPhotoCommentLikes CarPhotoCommentLike[]
 }
 
 // Car catalog - makes and models database
@@ -115,6 +135,7 @@ model Car {
   color         String?
   purchaseDate  DateTime?
   isPublic      Boolean   @default(true)
+  commentsEnabled Boolean @default(true)  // Owner can disable comments
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -156,6 +177,9 @@ model Car {
   estimatedHp       Int?      // calculated by AI or dyno-verified
   estimatedTorque   Int?      // calculated by AI or dyno-verified
   dynoVerified      Boolean   @default(false)  // true if dyno sheet uploaded
+  dynoProofUrl      String?   // URL to dyno sheet/video
+  hpVerifiedBy      String?   // Admin user ID who verified
+  hpVerifiedAt      DateTime? // When HP was verified
 
   ownerId       String
   owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -172,6 +196,9 @@ model Car {
   eventAttendances EventAttendee[]
   ratings       CarRating[]
   historyNodes  HistoryNode[]
+  carComments   CarComment[]
+  followers     CarFollow[]
+  photos        CarPhoto[]
 
   @@index([ownerId])
   @@index([generationId])
@@ -233,6 +260,45 @@ model CommentLike {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   commentId     String
   comment       Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+}
+
+// Comments directly on a car (separate from blog post comments)
+model CarComment {
+  id            String    @id @default(cuid())
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  // Replies support
+  parentId      String?
+  parent        CarComment?  @relation("CarCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       CarComment[] @relation("CarCommentReplies")
+
+  // Likes
+  likes         CarCommentLike[]
+
+  @@index([authorId])
+  @@index([carId])
+  @@index([parentId])
+}
+
+// Likes on car comments
+model CarCommentLike {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId     String
+  comment       CarComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, commentId])
   @@index([commentId])
@@ -453,4 +519,119 @@ model HistoryNode {
 
   @@index([carId])
   @@index([authorId])
+}
+
+// Follow a specific car (get notifications for that car only)
+model CarFollow {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+
+  followerId    String
+  follower      User      @relation(fields: [followerId], references: [id], onDelete: Cascade)
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, carId])
+  @@index([followerId])
+  @@index([carId])
+}
+
+// Car Photo Album - photos with social features
+model CarPhoto {
+  id            String    @id @default(cuid())
+  url           String    // Image URL
+  thumbnail     String?   // Thumbnail URL
+  caption       String?   // Photo caption/description
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  carId         String
+  car           Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  uploaderId    String
+  uploader      User      @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  // Social features
+  ratings       CarPhotoRating[]
+  comments      CarPhotoComment[]
+
+  @@index([carId])
+  @@index([uploaderId])
+  @@index([createdAt])
+}
+
+// Rev Limiter rating for car photos (0-10000 RPM style)
+model CarPhotoRating {
+  id            String    @id @default(cuid())
+  rating        Int       // 0-10000 (RPM on rev limiter, displayed as 0-10)
+  createdAt     DateTime  @default(now())
+
+  photoId       String
+  photo         CarPhoto  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([photoId, userId])  // One rating per user per photo
+  @@index([photoId])
+}
+
+// Comments on car photos
+model CarPhotoComment {
+  id            String    @id @default(cuid())
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  photoId       String
+  photo         CarPhoto  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Replies support
+  parentId      String?
+  parent        CarPhotoComment?  @relation("CarPhotoCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       CarPhotoComment[] @relation("CarPhotoCommentReplies")
+
+  // Likes
+  likes         CarPhotoCommentLike[]
+
+  @@index([photoId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+// Likes on photo comments
+model CarPhotoCommentLike {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId     String
+  comment       CarPhotoComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+}
+
+// Notifications for users
+model Notification {
+  id            String    @id @default(cuid())
+  type          String    // new_post, new_car, car_comment, car_rating, new_follower, car_followed
+  message       String    // Pre-generated message text
+  read          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  userId        String    // Who receives the notification
+  user          User      @relation("notifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Who triggered the notification (optional)
+  actorId       String?
+  actor         User?     @relation("notificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  // Related entities (optional)
+  postId        String?
+  carId         String?
+
+  @@index([userId])
+  @@index([userId, read])
 }

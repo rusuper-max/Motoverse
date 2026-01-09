@@ -7,6 +7,7 @@ import { Car, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const params = useParams()
@@ -14,8 +15,9 @@ export default function LoginPage() {
   const locale = params.locale as Locale
   const dict = getDictionary(locale)
   const t = dict.auth.login
+  const { refresh } = useAuth()
 
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -30,14 +32,14 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password }),
       })
 
       const data = await res.json()
 
       if (res.ok) {
-        // Login successful, refresh server components then redirect
-        router.refresh()
+        // Login successful - refresh auth state and redirect
+        await refresh()
         router.push(`/${locale}`)
       } else {
         // Handle specific errors
@@ -84,20 +86,20 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
+          {/* Email or Username */}
           <div className="space-y-1">
-            <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
-              {t.emailLabel}
+            <label htmlFor="identifier" className="block text-sm font-medium text-zinc-300">
+              Email or Username
             </label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
+              id="identifier"
+              name="identifier"
+              type="text"
+              autoComplete="username"
               required
-              placeholder={t.emailPlaceholder}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com or username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="block w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-3 text-white placeholder-zinc-500 focus:border-orange-500 focus:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all"
             />
           </div>

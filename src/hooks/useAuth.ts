@@ -10,6 +10,9 @@ export interface AuthUser {
   username: string
   name?: string | null
   avatar?: string | null
+  role?: string
+  isVerified?: boolean
+  profileCompleted?: boolean
 }
 
 interface AuthState {

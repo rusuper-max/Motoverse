@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History } from 'lucide-react'
+import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import PistonRating from '@/components/ui/PistonRating'
+import RevLimiterRating from '@/components/ui/RevLimiterRating'
 import HistoryCard from '@/components/HistoryCard'
 import AddNodeModal from '@/components/AddNodeModal'
 import BlogSidebar from '@/components/blog/BlogSidebar'
+import CarCommentsSidebar from '@/components/CarCommentsSidebar'
 import PerformanceStats from '@/components/PerformanceStats'
+import PhotoAlbum from '@/components/PhotoAlbum'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
@@ -52,6 +54,7 @@ interface CarData {
     estimatedHp: number | null
     estimatedTorque: number | null
     dynoVerified: boolean
+    commentsEnabled: boolean
     generation?: {
         name: string
         displayName: string | null
@@ -69,6 +72,9 @@ interface CarData {
 
 interface HistoryNodeSummary {
     id: string
+    nodeType: string
+    title: string
+    date: string
 }
 
 interface Rating {
@@ -107,6 +113,11 @@ export default function CarDetailPage() {
     const [myComment, setMyComment] = useState('')
     const [submittingRating, setSubmittingRating] = useState(false)
 
+    // Car follow state
+    const [isFollowingCar, setIsFollowingCar] = useState(false)
+    const [carFollowerCount, setCarFollowerCount] = useState(0)
+    const [togglingFollow, setTogglingFollow] = useState(false)
+
     // Form state for specs
     const [specs, setSpecs] = useState({
         curbWeight: '',
@@ -137,7 +148,39 @@ export default function CarDetailPage() {
     useEffect(() => {
         fetchCar()
         fetchHistoryNodes()
+        fetchCarFollowStatus()
     }, [carId])
+
+    const fetchCarFollowStatus = async () => {
+        try {
+            const res = await fetch(`/api/cars/${carId}/follow`)
+            if (res.ok) {
+                const data = await res.json()
+                setIsFollowingCar(data.isFollowing)
+                setCarFollowerCount(data.followerCount)
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    const handleToggleCarFollow = async () => {
+        if (!user) return
+        setTogglingFollow(true)
+        try {
+            const method = isFollowingCar ? 'DELETE' : 'POST'
+            const res = await fetch(`/api/cars/${carId}/follow`, { method })
+            if (res.ok) {
+                const data = await res.json()
+                setIsFollowingCar(data.isFollowing)
+                setCarFollowerCount(data.followerCount)
+            }
+        } catch {
+            // ignore
+        } finally {
+            setTogglingFollow(false)
+        }
+    }
 
     // Fetch ratings when user loads (to check if already rated)
     useEffect(() => {
@@ -322,25 +365,68 @@ export default function CarDetailPage() {
                                             <p className="text-zinc-400 mt-1">
                                                 {car.year} {car.generation?.model.make.name} {car.generation?.model.name} {genName}
                                             </p>
+                                            {/* Owner Info */}
+                                            <Link
+                                                href={`/${locale}/u/${car.owner.username}`}
+                                                className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-zinc-800/50 rounded-full hover:bg-zinc-800 transition-colors group"
+                                            >
+                                                <User className="w-4 h-4 text-zinc-500 group-hover:text-orange-400" />
+                                                <span className="text-sm text-zinc-400 group-hover:text-white">
+                                                    Owned by <span className="font-medium text-white group-hover:text-orange-400">{car.owner.name || car.owner.username}</span>
+                                                </span>
+                                            </Link>
                                         </div>
-                                        {isOwner && (
-                                            <div className="flex items-center gap-3">
-                                                <Link
-                                                    href={`/${locale}/garage/${car.id}/performance`}
-                                                    className="text-green-400 hover:text-green-300 flex items-center gap-1 text-sm"
+                                        <div className="flex items-center gap-3">
+                                            {/* Follow Car Button - shown to logged-in non-owners */}
+                                            {user && !isOwner && (
+                                                <button
+                                                    onClick={handleToggleCarFollow}
+                                                    disabled={togglingFollow}
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                                                        isFollowingCar
+                                                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
+                                                            : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 hover:text-white'
+                                                    }`}
                                                 >
-                                                    <Timer className="w-4 h-4" />
-                                                    Submit Time
-                                                </Link>
-                                                <Link
-                                                    href={`/${locale}/garage/${car.id}/edit`}
-                                                    className="text-orange-400 hover:text-orange-300 flex items-center gap-1 text-sm"
-                                                >
-                                                    <Edit3 className="w-4 h-4" />
-                                                    Edit
-                                                </Link>
-                                            </div>
-                                        )}
+                                                    {isFollowingCar ? (
+                                                        <>
+                                                            <Bell className="w-4 h-4" />
+                                                            Following
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <BellOff className="w-4 h-4" />
+                                                            Follow Car
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                            {/* Show follower count */}
+                                            {carFollowerCount > 0 && (
+                                                <span className="text-sm text-zinc-500">
+                                                    {carFollowerCount} follower{carFollowerCount !== 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                            {/* Owner actions */}
+                                            {isOwner && (
+                                                <>
+                                                    <Link
+                                                        href={`/${locale}/garage/${car.id}/performance`}
+                                                        className="text-green-400 hover:text-green-300 flex items-center gap-1 text-sm"
+                                                    >
+                                                        <Timer className="w-4 h-4" />
+                                                        Submit Time
+                                                    </Link>
+                                                    <Link
+                                                        href={`/${locale}/garage/${car.id}/edit`}
+                                                        className="text-orange-400 hover:text-orange-300 flex items-center gap-1 text-sm"
+                                                    >
+                                                        <Edit3 className="w-4 h-4" />
+                                                        Edit
+                                                    </Link>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Quick Stats */}
@@ -371,6 +457,11 @@ export default function CarDetailPage() {
                                         )}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Photo Album */}
+                            <div className="mb-6">
+                                <PhotoAlbum carId={carId} isOwner={isOwner} locale={locale} />
                             </div>
 
                             {/* Tabs */}
@@ -559,19 +650,51 @@ export default function CarDetailPage() {
 
                                 {activeTab === 'history' && (
                                     <div className="space-y-6">
-                                        <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700 rounded-2xl p-8 text-center">
-                                            <History className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-                                            <h2 className="text-2xl font-bold text-white mb-2">Car History Timeline</h2>
-                                            <p className="text-zinc-400 mb-6 max-w-md mx-auto">
-                                                View and edit your car&apos;s complete history with our visual node editor.
-                                                {historyNodes.length > 0 && ` ${historyNodes.length} events documented.`}
-                                            </p>
-                                            <Link href={`/${locale}/garage/${car.id}/history`}>
-                                                <Button size="lg">
-                                                    <History className="w-5 h-5 mr-2" />
-                                                    Open History Editor
-                                                </Button>
-                                            </Link>
+                                        <div className="relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden">
+                                            {/* Blurred history nodes preview in background */}
+                                            {historyNodes.length > 0 && (
+                                                <div className="absolute inset-0 opacity-30 blur-sm pointer-events-none overflow-hidden p-4">
+                                                    <div className="flex flex-col gap-3">
+                                                        {historyNodes.slice(0, 5).map((node, i) => (
+                                                            <div
+                                                                key={node.id}
+                                                                className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg"
+                                                                style={{ opacity: 1 - i * 0.15 }}
+                                                            >
+                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                    node.nodeType === 'purchase' ? 'bg-green-500/30' :
+                                                                    node.nodeType === 'modification' ? 'bg-orange-500/30' :
+                                                                    node.nodeType === 'maintenance' ? 'bg-blue-500/30' :
+                                                                    node.nodeType === 'milestone' ? 'bg-purple-500/30' :
+                                                                    'bg-zinc-700'
+                                                                }`}>
+                                                                    <History className="w-5 h-5 text-white" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <div className="h-3 bg-zinc-600 rounded w-3/4 mb-1" />
+                                                                    <div className="h-2 bg-zinc-700 rounded w-1/2" />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Main content overlay */}
+                                            <div className="relative z-10 p-8 text-center bg-gradient-to-b from-zinc-900/80 via-zinc-900/90 to-zinc-900">
+                                                <History className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+                                                <h2 className="text-2xl font-bold text-white mb-2">Car History Timeline</h2>
+                                                <p className="text-zinc-400 mb-6 max-w-md mx-auto">
+                                                    View and edit your car&apos;s complete history with our visual node editor.
+                                                    {historyNodes.length > 0 && ` ${historyNodes.length} events documented.`}
+                                                </p>
+                                                <Link href={`/${locale}/garage/${car.id}/history`}>
+                                                    <Button size="lg">
+                                                        <History className="w-5 h-5 mr-2" />
+                                                        Open History Editor
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -581,9 +704,12 @@ export default function CarDetailPage() {
                                         {/* Average Rating */}
                                         <div className="bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-xl p-6 border border-orange-500/30">
                                             <h2 className="text-xl font-semibold text-white mb-4">Community Rating</h2>
-                                            <div className="flex items-center gap-4">
-                                                <PistonRating value={avgRating} readonly size="lg" />
-                                                <span className="text-zinc-400">({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>
+                                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                                <RevLimiterRating value={avgRating * 1000} readonly size="lg" />
+                                                <div className="text-center sm:text-left">
+                                                    <p className="text-2xl font-bold text-orange-400">{avgRating.toFixed(1)}k RPM</p>
+                                                    <span className="text-zinc-400">({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -597,9 +723,16 @@ export default function CarDetailPage() {
                                                     <p className="text-sm text-green-400 mb-4">You&apos;ve already rated this car. You can update your rating below.</p>
                                                 )}
                                                 <div className="space-y-4">
-                                                    <div>
-                                                        <label className="block text-sm text-zinc-400 mb-2">Your Rating</label>
-                                                        <PistonRating value={myRating} onChange={setMyRating} size="md" />
+                                                    <div className="flex flex-col items-center">
+                                                        <label className="block text-sm text-zinc-400 mb-4">Rev it up to rate!</label>
+                                                        <RevLimiterRating
+                                                            value={myRating * 1000}
+                                                            onChange={(v) => setMyRating(Math.round(v / 1000))}
+                                                            size="lg"
+                                                        />
+                                                        <p className="mt-2 text-sm text-zinc-500">
+                                                            Your rating: <span className="text-orange-400 font-semibold">{myRating}/10</span>
+                                                        </p>
                                                     </div>
                                                     <div>
                                                         <label className="block text-sm text-zinc-400 mb-2">Comment (optional)</label>
@@ -650,7 +783,17 @@ export default function CarDetailPage() {
                                                                     {new Date(rating.createdAt).toLocaleDateString()}
                                                                 </span>
                                                             </div>
-                                                            <PistonRating value={rating.rating} readonly size="sm" />
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <span className={`text-lg font-bold ${rating.rating >= 8 ? 'text-red-400' : 'text-orange-400'}`}>
+                                                                    {rating.rating}k RPM
+                                                                </span>
+                                                                <div className="flex-1 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full rounded-full transition-all ${rating.rating >= 8 ? 'bg-red-500' : 'bg-orange-500'}`}
+                                                                        style={{ width: `${(rating.rating / 10) * 100}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                             {rating.comment && (
                                                                 <p className="text-zinc-400 mt-3">{rating.comment}</p>
                                                             )}
@@ -664,12 +807,62 @@ export default function CarDetailPage() {
                             </div>
                         </div>
 
-                        {/* Blog Sidebar */}
+                        {/* Right Sidebar - Blog Posts */}
                         <div className="hidden lg:block w-80 shrink-0">
                             <div className="sticky top-24">
                                 <BlogSidebar carId={carId} locale={locale} isOwner={isOwner} />
                             </div>
                         </div>
+                    </div>
+
+                    {/* Comments Section - Full Width Below */}
+                    <div className="mt-6">
+                        {/* Owner toggle for comments */}
+                        {isOwner && (
+                            <div className="flex items-center justify-between mb-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <MessageCircleOff className="w-5 h-5 text-zinc-500" />
+                                    <div>
+                                        <p className="text-sm font-medium text-white">Comments</p>
+                                        <p className="text-xs text-zinc-500">Allow visitors to comment on your car</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        const res = await fetch(`/api/cars/${carId}`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ commentsEnabled: !car.commentsEnabled }),
+                                        })
+                                        if (res.ok) {
+                                            setCar(prev => prev ? { ...prev, commentsEnabled: !prev.commentsEnabled } : null)
+                                        }
+                                    }}
+                                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                                        car.commentsEnabled ? 'bg-orange-500' : 'bg-zinc-700'
+                                    }`}
+                                >
+                                    <span
+                                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                                            car.commentsEnabled ? 'left-7' : 'left-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        )}
+
+                        {car.commentsEnabled ? (
+                            <CarCommentsSidebar
+                                carId={carId}
+                                locale={locale}
+                                currentUser={user ? { id: user.id, avatar: user.avatar, name: user.name } : null}
+                            />
+                        ) : (
+                            <div className="p-8 text-center bg-zinc-900 border border-zinc-800 rounded-xl">
+                                <MessageCircleOff className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
+                                <p className="text-zinc-500">Comments are disabled for this car</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Add Node Modal */}

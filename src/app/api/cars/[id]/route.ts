@@ -95,6 +95,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       color,
       purchaseDate,
       isPublic,
+      commentsEnabled,
     } = body
 
     const car = await prisma.car.update({
@@ -113,6 +114,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         color: color !== undefined ? color || null : undefined,
         purchaseDate: purchaseDate !== undefined ? (purchaseDate ? new Date(purchaseDate) : null) : undefined,
         isPublic: isPublic !== undefined ? isPublic : undefined,
+        commentsEnabled: commentsEnabled !== undefined ? commentsEnabled : undefined,
       },
       include: {
         generation: {

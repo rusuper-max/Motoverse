@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { Car, FileText, MapPin, Calendar, Heart, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react'
+import { Car, FileText, MapPin, Calendar, Heart, MessageCircle, User as UserIcon, Loader2, Settings, Globe, Instagram, Youtube, Twitter } from 'lucide-react'
 import FollowButton from '@/components/FollowButton'
+import VerificationBadge from '@/components/ui/VerificationBadge'
+import RoleBadge from '@/components/ui/RoleBadge'
 
 interface UserProfile {
   id: string
@@ -14,9 +16,15 @@ interface UserProfile {
   avatar: string | null
   coverImage: string | null
   location: string | null
+  country: string | null
+  accountType: string | null
+  website: string | null
+  socialLinks: any
   createdAt: string
   isFollowing: boolean
   isOwnProfile: boolean
+  isVerified: boolean
+  role: string
   cars: Array<{
     id: string
     nickname: string | null
@@ -159,7 +167,7 @@ export default function UserProfilePage() {
         <div className="relative -mt-16 sm:-mt-20 pb-6 border-b border-zinc-800">
           <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             {/* Avatar */}
-            <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-zinc-800 border-4 border-zinc-950 overflow-hidden">
+            <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-zinc-800 border-4 border-zinc-950 overflow-hidden shrink-0">
               {user.avatar ? (
                 <img
                   src={user.avatar}
@@ -176,43 +184,95 @@ export default function UserProfilePage() {
             </div>
 
             {/* User Info */}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                    {user.name || user.username}
-                  </h1>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white truncate">
+                      {user.name || user.username}
+                    </h1>
+                    {user.isVerified && <VerificationBadge status="approved" />}
+                    {(user.role === 'founder' || user.role === 'admin' || user.role === 'moderator') && (
+                      <RoleBadge role={user.role} />
+                    )}
+                    {user.accountType && (
+                      <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs font-medium uppercase tracking-wider border border-zinc-700">
+                        {user.accountType}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-zinc-400">@{user.username}</p>
                 </div>
 
-                {/* Follow Button */}
-                {!user.isOwnProfile && (
-                  <FollowButton
-                    username={user.username}
-                    initialIsFollowing={user.isFollowing}
-                    initialFollowerCount={user._count.followers}
-                    onFollowChange={handleFollowChange}
-                  />
-                )}
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  {user.isOwnProfile ? (
+                    <Link
+                      href={`/${locale}/settings`}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-zinc-700 text-white rounded-lg hover:bg-zinc-700 transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Edit Profile
+                    </Link>
+                  ) : (
+                    <FollowButton
+                      username={user.username}
+                      initialIsFollowing={user.isFollowing}
+                      initialFollowerCount={user._count.followers}
+                      onFollowChange={handleFollowChange}
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Bio */}
               {user.bio && (
-                <p className="text-zinc-300 mt-3 max-w-2xl">{user.bio}</p>
+                <p className="text-zinc-300 mt-3 max-w-2xl whitespace-pre-wrap">{user.bio}</p>
               )}
 
               {/* Meta Info */}
-              <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-zinc-500">
+              <div className="flex flex-wrap items-center gap-y-2 gap-x-4 mt-3 text-sm text-zinc-500">
                 {user.location && (
                   <span className="flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
                     {user.location}
+                    {user.country && `, ${user.country}`}
+                  </span>
+                )}
+                {!user.location && user.country && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {user.country}
                   </span>
                 )}
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
                   Joined {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </span>
+
+                {/* Social Links */}
+                <div className="flex items-center gap-3 ml-2 pl-2 border-l border-zinc-800">
+                  {user.website && (
+                    <a href={user.website} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-orange-500 transition-colors">
+                      <Globe className="w-4 h-4" />
+                    </a>
+                  )}
+                  {user.socialLinks?.instagram && (
+                    <a href={`https://instagram.com/${user.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-pink-500 transition-colors">
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  )}
+                  {user.socialLinks?.youtube && (
+                    <a href={user.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-red-600 transition-colors">
+                      <Youtube className="w-4 h-4" />
+                    </a>
+                  )}
+                  {user.socialLinks?.x && (
+                    <a href={`https://x.com/${user.socialLinks.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-white transition-colors">
+                      <Twitter className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Stats */}
@@ -242,11 +302,10 @@ export default function UserProfilePage() {
         <div className="flex gap-1 mt-6 border-b border-zinc-800">
           <button
             onClick={() => setActiveTab('cars')}
-            className={`px-6 py-3 font-medium transition-colors relative ${
-              activeTab === 'cars'
+            className={`px-6 py-3 font-medium transition-colors relative ${activeTab === 'cars'
                 ? 'text-orange-500'
                 : 'text-zinc-400 hover:text-white'
-            }`}
+              }`}
           >
             <span className="flex items-center gap-2">
               <Car className="w-4 h-4" />
@@ -258,11 +317,10 @@ export default function UserProfilePage() {
           </button>
           <button
             onClick={() => setActiveTab('posts')}
-            className={`px-6 py-3 font-medium transition-colors relative ${
-              activeTab === 'posts'
+            className={`px-6 py-3 font-medium transition-colors relative ${activeTab === 'posts'
                 ? 'text-orange-500'
                 : 'text-zinc-400 hover:text-white'
-            }`}
+              }`}
           >
             <span className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -374,7 +432,7 @@ function PostCard({ post, locale }: { post: UserProfile['posts'][0]; locale: str
       try {
         const imgs = JSON.parse(post.images)
         if (imgs.length > 0) return imgs[0]
-      } catch {}
+      } catch { }
     }
     return null
   }

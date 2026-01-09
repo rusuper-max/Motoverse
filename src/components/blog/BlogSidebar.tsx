@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { MessageCircle, Heart, Calendar, FileText } from 'lucide-react'
+import { MessageCircle, Heart, Calendar, FileText, Edit3 } from 'lucide-react'
 import { Locale } from '@/i18n/config'
+import { useAuth } from '@/hooks/useAuth'
 
 interface BlogPost {
     id: string
@@ -40,6 +41,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function BlogSidebar({ carId, locale, isOwner }: BlogSidebarProps) {
+    const { user } = useAuth()
     const [posts, setPosts] = useState<BlogPost[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -122,55 +124,68 @@ export default function BlogSidebar({ carId, locale, isOwner }: BlogSidebarProps
                     <div className="divide-y divide-zinc-800">
                         {posts.map((post) => {
                             const thumbnail = getThumbnail(post)
+                            const canEdit = user?.id === post.author.id
                             return (
-                                <Link
-                                    key={post.id}
-                                    href={`/${locale}/posts/${post.id}`}
-                                    className="block hover:bg-zinc-800/50 transition-colors"
-                                >
-                                    <div className="p-4">
-                                        {/* Thumbnail */}
-                                        {thumbnail ? (
-                                            <div className="aspect-video rounded-lg overflow-hidden mb-3 bg-zinc-800">
-                                                <img
-                                                    src={thumbnail}
-                                                    alt={post.title}
-                                                    className="w-full h-full object-cover"
-                                                />
+                                <div key={post.id} className="relative group">
+                                    <Link
+                                        href={`/${locale}/posts/${post.id}`}
+                                        className="block hover:bg-zinc-800/50 transition-colors"
+                                    >
+                                        <div className="p-4">
+                                            {/* Thumbnail */}
+                                            {thumbnail ? (
+                                                <div className="aspect-video rounded-lg overflow-hidden mb-3 bg-zinc-800">
+                                                    <img
+                                                        src={thumbnail}
+                                                        alt={post.title}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="aspect-video rounded-lg overflow-hidden mb-3 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                                                    <FileText className="w-10 h-10 text-zinc-600" />
+                                                </div>
+                                            )}
+
+                                            {/* Category Badge */}
+                                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${CATEGORY_COLORS[post.category] || CATEGORY_COLORS.other}`}>
+                                                {post.category}
+                                            </span>
+
+                                            {/* Title */}
+                                            <h4 className="text-white font-medium line-clamp-2 mb-2">
+                                                {post.title}
+                                            </h4>
+
+                                            {/* Meta */}
+                                            <div className="flex items-center gap-4 text-xs text-zinc-500">
+                                                <span className="flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {formatDate(post.createdAt)}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <Heart className="w-3 h-3" />
+                                                    {post._count.likes}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <MessageCircle className="w-3 h-3" />
+                                                    {post._count.comments}
+                                                </span>
                                             </div>
-                                        ) : (
-                                            <div className="aspect-video rounded-lg overflow-hidden mb-3 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                                                <FileText className="w-10 h-10 text-zinc-600" />
-                                            </div>
-                                        )}
-
-                                        {/* Category Badge */}
-                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${CATEGORY_COLORS[post.category] || CATEGORY_COLORS.other}`}>
-                                            {post.category}
-                                        </span>
-
-                                        {/* Title */}
-                                        <h4 className="text-white font-medium line-clamp-2 mb-2">
-                                            {post.title}
-                                        </h4>
-
-                                        {/* Meta */}
-                                        <div className="flex items-center gap-4 text-xs text-zinc-500">
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" />
-                                                {formatDate(post.createdAt)}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Heart className="w-3 h-3" />
-                                                {post._count.likes}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <MessageCircle className="w-3 h-3" />
-                                                {post._count.comments}
-                                            </span>
                                         </div>
-                                    </div>
-                                </Link>
+                                    </Link>
+                                    {/* Edit button overlay */}
+                                    {canEdit && (
+                                        <Link
+                                            href={`/${locale}/posts/${post.id}/edit`}
+                                            className="absolute top-2 right-2 p-2 bg-zinc-900/90 rounded-lg text-zinc-400 hover:text-orange-400 hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-all"
+                                            title="Edit post"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <Edit3 className="w-4 h-4" />
+                                        </Link>
+                                    )}
+                                </div>
                             )
                         })}
                     </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { notifyAboutNewFollower } from '@/lib/notifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,6 +55,9 @@ export async function POST(
         followingId: userToFollow.id,
       },
     })
+
+    // Notify the user about their new follower
+    await notifyAboutNewFollower(userToFollow.id, currentUser.id)
 
     // Get updated follower count
     const followerCount = await prisma.follow.count({

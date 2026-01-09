@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MessageCircle, Heart, Share2, Calendar, User, Car } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Heart, Share2, Calendar, User, Car, Edit3 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Locale } from '@/i18n/config'
 import RichTextRenderer from '@/components/blog/RichTextRenderer'
@@ -245,9 +245,20 @@ export default function PostDetailPage() {
                             </span>
                         </div>
 
-                        <h1 className="text-3xl md:text-4xl font-bold text-white mb-6 leading-tight">
-                            {post.title}
-                        </h1>
+                        <div className="flex items-start justify-between gap-4 mb-6">
+                            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+                                {post.title}
+                            </h1>
+                            {user?.id === post.author.id && (
+                                <Link
+                                    href={`/${locale}/posts/${post.id}/edit`}
+                                    className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors text-sm shrink-0"
+                                >
+                                    <Edit3 className="w-4 h-4" />
+                                    Edit
+                                </Link>
+                            )}
+                        </div>
 
                         <div className="flex items-center justify-between flex-wrap gap-4">
                             <Link href={`/${locale}/u/${post.author.username}`} className="flex items-center gap-3 group">

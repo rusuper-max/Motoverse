@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth'
+import { notifyFollowersAboutPost } from '@/lib/notifications'
 
 interface RouteParams {
     params: Promise<{ id: string }>
@@ -136,6 +137,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 positionY: 100,
             }
         })
+
+        // Get car name for notification message
+        const carData = await prisma.car.findUnique({
+            where: { id: carId },
+            select: {
+                nickname: true,
+                year: true,
+                generation: {
+                    select: {
+                        model: {
+                            select: {
+                                name: true,
+                                make: { select: { name: true } },
+                            },
+                        },
+                    },
+                },
+            },
+        })
+
+        const carName = carData?.nickname ||
+            (carData?.generation ? `${carData.year} ${carData.generation.model.make.name} ${carData.generation.model.name}` : 'their car')
+
+        // Notify followers about the new post
+        await notifyFollowersAboutPost(user.id, post.id, carId, carName)
 
         return NextResponse.json({ post }, { status: 201 })
     } catch (error) {

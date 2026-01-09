@@ -7,34 +7,46 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 interface LoginBody {
-  email: string
+  identifier: string // Can be email or username
   password: string
 }
 
 export async function POST(req: Request) {
   try {
     const body: LoginBody = await req.json()
-    const { email, password } = body
+    // Support both 'email' (legacy) and 'identifier' (new) field names
+    const identifier = body.identifier || (body as unknown as { email: string }).email
+    const { password } = body
 
     // Validate required fields
-    if (!email || !password) {
+    if (!identifier || !password) {
       return NextResponse.json(
-        { error: 'missing_fields', message: 'Email and password are required' },
+        { error: 'missing_fields', message: 'Email/username and password are required' },
         { status: 400 }
       )
     }
 
-    // Validate email format
-    if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: 'invalid_email', message: 'Please enter a valid email address' },
-        { status: 400 }
-      )
+    // Determine if input is email or username
+    let email = identifier
+    if (!isValidEmail(identifier)) {
+      // Not an email, treat as username and look up email
+      const user = await prisma.user.findUnique({
+        where: { username: identifier.toLowerCase() },
+        select: { email: true }
+      })
+
+      if (!user) {
+        return NextResponse.json(
+          { error: 'invalid_credentials', message: 'Invalid username/email or password' },
+          { status: 401 }
+        )
+      }
+      email = user.email
     }
 
     const supabase = await createClient()
 
-    // Sign in with Supabase
+    // Sign in with Supabase using the resolved email
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
