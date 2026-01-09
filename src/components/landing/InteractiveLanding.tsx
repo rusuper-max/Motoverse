@@ -67,17 +67,10 @@ export default function InteractiveLanding({ features, children, dict }: Interac
     }
   }, [authenticated, loading, router, locale])
 
-  // Show loading state while checking auth
-  if (loading || !shouldShow) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-      </div>
-    )
-  }
-
   // Handle scroll events to shift gears when in the interactive section
   useEffect(() => {
+    // Don't attach scroll handler until page is ready to show
+    if (!shouldShow) return
     let accumulatedDelta = 0
     const SCROLL_THRESHOLD = 50  // Amount of scroll needed to trigger gear change
 
@@ -131,10 +124,11 @@ export default function InteractiveLanding({ features, children, dict }: Interac
 
     window.addEventListener('wheel', handleWheel, { passive: false })
     return () => window.removeEventListener('wheel', handleWheel)
-  }, [currentGear, features.length, shiftUp, shiftDown])
+  }, [currentGear, features.length, shiftUp, shiftDown, shouldShow])
 
   // Scroll to keep shifter visible when gear changes (don't scroll to feature, just highlight it)
   useEffect(() => {
+    if (!shouldShow) return
     const shifterSection = shifterSectionRef.current
     if (!shifterSection) return
 
@@ -158,10 +152,11 @@ export default function InteractiveLanding({ features, children, dict }: Interac
         }, 50)
       }
     }
-  }, [currentGear])
+  }, [currentGear, shouldShow])
 
   // Keyboard controls
   useEffect(() => {
+    if (!shouldShow) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
         e.preventDefault()
@@ -174,7 +169,16 @@ export default function InteractiveLanding({ features, children, dict }: Interac
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [shiftUp, shiftDown])
+  }, [shiftUp, shiftDown, shouldShow])
+
+  // Show loading state while checking auth
+  if (loading || !shouldShow) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    )
+  }
 
   // Create gear labels from features
   const gearLabels: Partial<Record<GearPosition, string>> = {

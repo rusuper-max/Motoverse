@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 
 interface RevLimiterRatingProps {
   value: number | null // 0-10000
@@ -19,67 +19,39 @@ export default function RevLimiterRating({
   showValue = true,
   label,
 }: RevLimiterRatingProps) {
-  const [isDragging, setIsDragging] = useState(false)
   const [hoverValue, setHoverValue] = useState<number | null>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
 
   const displayValue = hoverValue ?? value ?? 0
 
   // Size configurations
   const sizeConfig = {
-    sm: { width: 140, height: 95, fontSize: 9 },
-    md: { width: 200, height: 135, fontSize: 11 },
-    lg: { width: 280, height: 190, fontSize: 14 },
+    sm: { width: 180, barHeight: 8, fontSize: 9 },
+    md: { width: 240, barHeight: 10, fontSize: 10 },
+    lg: { width: 320, barHeight: 12, fontSize: 12 },
   }
 
   const config = sizeConfig[size]
+  const isInRedZone = displayValue >= 8000
 
-  // The gauge arc spans from -135° to +135° (270° total)
-  // 0 RPM = -135°, 10000 RPM = +135°
-  const valueToAngle = (val: number) => {
-    const normalizedVal = Math.max(0, Math.min(10000, val))
-    return -135 + (normalizedVal / 10000) * 270
-  }
-
-  // Convert position to value
-  const positionToValue = useCallback((clientX: number, clientY: number) => {
-    if (!svgRef.current) return 0
-
-    const rect = svgRef.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height * 0.85
-
-    const deltaX = clientX - centerX
-    const deltaY = centerY - clientY
-
-    let angle = Math.atan2(deltaX, deltaY) * (180 / Math.PI)
-    angle = Math.max(-135, Math.min(135, angle))
-
-    const newValue = ((angle + 135) / 270) * 10000
-    return Math.round(newValue / 100) * 100
+  // Convert mouse position to value (0-10000)
+  const positionToValue = useCallback((clientX: number) => {
+    if (!barRef.current) return 0
+    const rect = barRef.current.getBoundingClientRect()
+    const x = clientX - rect.left
+    const percentage = Math.max(0, Math.min(1, x / rect.width))
+    return Math.round(percentage * 100) * 100
   }, [])
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     if (readonly || !onChange) return
-    setIsDragging(true)
-    const newValue = positionToValue(e.clientX, e.clientY)
+    const newValue = positionToValue(e.clientX)
     onChange(newValue)
   }
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !onChange) return
-    const newValue = positionToValue(e.clientX, e.clientY)
-    onChange(newValue)
-  }, [isDragging, onChange, positionToValue])
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  const handleHover = (e: React.MouseEvent) => {
-    if (readonly || isDragging) return
-    const newValue = positionToValue(e.clientX, e.clientY)
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (readonly) return
+    const newValue = positionToValue(e.clientX)
     setHoverValue(newValue)
   }
 
@@ -87,220 +59,180 @@ export default function RevLimiterRating({
     setHoverValue(null)
   }
 
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove)
-        window.removeEventListener('mouseup', handleMouseUp)
-      }
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp])
-
-  const needleAngle = valueToAngle(displayValue)
-  const isInRedZone = displayValue >= 8000
-
-  // SVG viewBox dimensions
-  const viewBoxWidth = 200
-  const viewBoxHeight = 130
-  const centerX = 100
-  const centerY = 105
-
-  // Arc radius
-  const arcRadius = 75
-  const arcWidth = 12
-
-  // Generate tick marks and numbers - positioned INSIDE the arc
-  const ticks = Array.from({ length: 11 }, (_, i) => i)
+  const fillPercentage = displayValue / 10000 * 100
+  const redZoneStart = 80
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative select-none flex flex-col items-center ${!readonly ? 'cursor-pointer' : ''}`}
-      style={{ width: config.width }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleHover}
-      onMouseLeave={handleMouseLeave}
-    >
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-        style={{ width: config.width, height: config.height }}
+    <div className="flex flex-col items-center" style={{ width: config.width }}>
+      {/* Scale numbers above */}
+      <div className="w-full flex justify-between px-0.5 mb-1.5">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+          <span
+            key={num}
+            className={`font-medium transition-colors ${
+              num >= 8 ? 'text-red-500' : 'text-zinc-500'
+            } ${displayValue / 1000 >= num && displayValue / 1000 < num + 1 ? (num >= 8 ? 'text-red-400' : 'text-zinc-300') : ''}`}
+            style={{ fontSize: config.fontSize, width: '1ch', textAlign: 'center' }}
+          >
+            {num}
+          </span>
+        ))}
+      </div>
+
+      {/* Main bar container */}
+      <div
+        ref={barRef}
+        className={`relative w-full ${!readonly ? 'cursor-pointer' : ''} group`}
+        style={{ height: config.barHeight + 16 }}
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
       >
-        {/* Background arc */}
-        <path
-          d={describeArc(centerX, centerY, arcRadius, -135, 135)}
-          fill="none"
-          stroke="#18181b"
-          strokeWidth={arcWidth + 4}
-          strokeLinecap="round"
-        />
+        {/* Tick marks */}
+        <div className="absolute top-0 w-full flex justify-between px-0.5" style={{ height: 6 }}>
+          {[...Array(11)].map((_, i) => (
+            <div
+              key={i}
+              className={`w-px transition-colors ${
+                i >= 8 ? 'bg-red-500/60' : 'bg-zinc-600'
+              }`}
+              style={{ height: i % 2 === 0 ? 6 : 4 }}
+            />
+          ))}
+        </div>
 
-        {/* Green zone (0-8000) - 0% to 80% of arc */}
-        <path
-          d={describeArc(centerX, centerY, arcRadius, -135, 81)}
-          fill="none"
-          stroke="#22c55e"
-          strokeWidth={arcWidth}
-          strokeLinecap="round"
-        />
+        {/* Bar track */}
+        <div
+          className="absolute left-0 right-0 rounded-full overflow-hidden"
+          style={{ top: 8, height: config.barHeight }}
+        >
+          {/* Background gradient track */}
+          <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 rounded-full" />
 
-        {/* Red zone (8000-10000) - 80% to 100% of arc */}
-        <path
-          d={describeArc(centerX, centerY, arcRadius, 81, 135)}
-          fill="none"
-          stroke="#ef4444"
-          strokeWidth={arcWidth}
-          strokeLinecap="round"
-        />
+          {/* Subtle inner shadow */}
+          <div className="absolute inset-0 rounded-full shadow-inner" style={{ boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }} />
 
-        {/* Tick marks and numbers - INSIDE the arc */}
-        {ticks.map((tick) => {
-          const tickAngle = -135 + (tick / 10) * 270
-          const rad = (tickAngle - 90) * (Math.PI / 180)
-
-          // Tick marks on the inner edge of arc
-          const tickOuterRadius = arcRadius - arcWidth / 2 - 2
-          const tickInnerRadius = tickOuterRadius - (tick % 2 === 0 ? 8 : 5)
-
-          const x1 = centerX + tickInnerRadius * Math.cos(rad)
-          const y1 = centerY + tickInnerRadius * Math.sin(rad)
-          const x2 = centerX + tickOuterRadius * Math.cos(rad)
-          const y2 = centerY + tickOuterRadius * Math.sin(rad)
-
-          // Numbers positioned inside ticks
-          const textRadius = tickInnerRadius - 10
-          const textX = centerX + textRadius * Math.cos(rad)
-          const textY = centerY + textRadius * Math.sin(rad)
-
-          return (
-            <g key={tick}>
-              <line
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke={tick >= 8 ? '#ef4444' : '#52525b'}
-                strokeWidth={tick % 2 === 0 ? 2 : 1}
+          {/* Segment lines for premium look */}
+          <div className="absolute inset-0 flex">
+            {[...Array(50)].map((_, i) => (
+              <div
+                key={i}
+                className="flex-1 border-r border-zinc-950/30 last:border-r-0"
               />
-              {tick % 2 === 0 && (
-                <text
-                  x={textX}
-                  y={textY}
-                  fill={tick >= 8 ? '#ef4444' : '#a1a1aa'}
-                  fontSize={config.fontSize}
-                  fontWeight="600"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                >
-                  {tick}
-                </text>
-              )}
-            </g>
-          )
-        })}
+            ))}
+          </div>
 
-        {/* RPM label in center */}
-        <text
-          x={centerX}
-          y={centerY - 25}
-          fill="#71717a"
-          fontSize="8"
-          fontWeight="500"
-          textAnchor="middle"
-        >
-          x1000 RPM
-        </text>
-
-        {/* Needle */}
-        <g
-          transform={`rotate(${needleAngle}, ${centerX}, ${centerY})`}
-          className="transition-transform duration-100 ease-out"
-        >
-          {/* Needle shadow */}
-          <line
-            x1={centerX}
-            y1={centerY}
-            x2={centerX}
-            y2={centerY - 55}
-            stroke="rgba(0,0,0,0.4)"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-          {/* Main needle */}
-          <line
-            x1={centerX}
-            y1={centerY}
-            x2={centerX}
-            y2={centerY - 52}
-            stroke={isInRedZone ? '#ef4444' : '#f97316'}
-            strokeWidth="2.5"
-            strokeLinecap="round"
+          {/* Green zone glow background */}
+          <div
+            className="absolute inset-y-0 left-0 rounded-l-full"
             style={{
-              filter: isInRedZone
-                ? 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.8))'
-                : 'drop-shadow(0 0 4px rgba(249, 115, 22, 0.6))',
+              width: `${redZoneStart}%`,
+              background: 'linear-gradient(to right, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.15))',
             }}
           />
-        </g>
 
-        {/* Center cap */}
-        <circle
-          cx={centerX}
-          cy={centerY}
-          r="8"
-          fill="#27272a"
-          stroke={isInRedZone ? '#ef4444' : '#f97316'}
-          strokeWidth="2.5"
-        />
-        <circle
-          cx={centerX}
-          cy={centerY}
-          r="3"
-          fill={isInRedZone ? '#ef4444' : '#f97316'}
-        />
-
-        {/* Digital readout */}
-        {showValue && (
-          <text
-            x={centerX}
-            y={viewBoxHeight - 5}
-            fill={isInRedZone ? '#ef4444' : '#f97316'}
-            fontSize="14"
-            fontWeight="bold"
-            fontFamily="monospace"
-            textAnchor="middle"
+          {/* Red zone glow background */}
+          <div
+            className="absolute inset-y-0 right-0 rounded-r-full"
             style={{
-              filter: isInRedZone
-                ? 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.5))'
-                : 'drop-shadow(0 0 4px rgba(249, 115, 22, 0.4))',
+              width: `${100 - redZoneStart}%`,
+              background: 'linear-gradient(to right, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.25))',
+            }}
+          />
+
+          {/* Fill bar with gradient */}
+          <div
+            className="absolute inset-y-0 left-0 rounded-full transition-all duration-75 ease-out"
+            style={{
+              width: `${fillPercentage}%`,
+              background: fillPercentage > redZoneStart
+                ? `linear-gradient(to right,
+                    #15803d 0%,
+                    #22c55e ${(redZoneStart / fillPercentage) * 100 - 5}%,
+                    #facc15 ${(redZoneStart / fillPercentage) * 100}%,
+                    #ef4444 ${(redZoneStart / fillPercentage) * 100 + 10}%,
+                    #dc2626 100%)`
+                : 'linear-gradient(to right, #15803d 0%, #22c55e 60%, #4ade80 100%)',
+              boxShadow: isInRedZone
+                ? '0 0 20px rgba(239, 68, 68, 0.5), 0 0 40px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
+                : '0 0 12px rgba(34, 197, 94, 0.4), 0 0 24px rgba(34, 197, 94, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
+            }}
+          />
+
+          {/* Glossy overlay */}
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
+            }}
+          />
+        </div>
+
+        {/* Needle indicator */}
+        <div
+          className="absolute transition-all duration-75 ease-out"
+          style={{
+            left: `calc(${fillPercentage}% - 1px)`,
+            top: 6,
+            height: config.barHeight + 4,
+          }}
+        >
+          {/* Needle line */}
+          <div
+            className="w-0.5 h-full rounded-full"
+            style={{
+              background: 'linear-gradient(to bottom, #fff, #e5e5e5)',
+              boxShadow: `0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px ${isInRedZone ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)'}`,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Digital readout */}
+      {showValue && (
+        <div className="mt-3 relative">
+          {/* LCD-style background */}
+          <div
+            className="px-4 py-1.5 rounded-md relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)',
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.05)',
             }}
           >
-            {(displayValue / 1000).toFixed(1)}k RPM
-          </text>
-        )}
-      </svg>
+            {/* Scanline effect */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-10"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)',
+              }}
+            />
+
+            <span
+              className={`font-mono font-bold tracking-wider relative ${
+                isInRedZone ? 'text-red-500' : 'text-emerald-400'
+              }`}
+              style={{
+                fontSize: config.fontSize + 6,
+                textShadow: isInRedZone
+                  ? '0 0 10px rgba(239, 68, 68, 0.8), 0 0 20px rgba(239, 68, 68, 0.4)'
+                  : '0 0 10px rgba(52, 211, 153, 0.8), 0 0 20px rgba(52, 211, 153, 0.4)',
+              }}
+            >
+              {(displayValue / 1000).toFixed(1)}
+            </span>
+            <span
+              className={`ml-1 font-mono font-medium ${isInRedZone ? 'text-red-500/70' : 'text-emerald-400/70'}`}
+              style={{ fontSize: config.fontSize + 2 }}
+            >
+              RPM
+            </span>
+          </div>
+        </div>
+      )}
 
       {label && (
-        <p className="text-zinc-400 text-sm mt-1">{label}</p>
+        <p className="text-zinc-500 text-xs mt-2 uppercase tracking-wider">{label}</p>
       )}
     </div>
   )
-}
-
-// Helper function to describe an SVG arc
-function describeArc(x: number, y: number, radius: number, startAngle: number, endAngle: number): string {
-  const start = polarToCartesian(x, y, radius, endAngle)
-  const end = polarToCartesian(x, y, radius, startAngle)
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1'
-  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`
-}
-
-function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
-  const angleInRadians = (angleInDegrees - 90) * Math.PI / 180
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  }
 }
