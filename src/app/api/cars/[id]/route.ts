@@ -31,6 +31,7 @@ export async function GET(req: Request, { params }: RouteParams) {
             username: true,
             name: true,
             avatar: true,
+            role: true,
           },
         },
         _count: {

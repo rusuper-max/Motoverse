@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Camera, X, MessageCircle, Upload, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Camera, X, MessageCircle, Upload, Trash2, ChevronLeft, ChevronRight, Loader2, ImagePlus } from 'lucide-react'
 import RevLimiterRating from './ui/RevLimiterRating'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 interface PhotoAuthor {
   id: string
@@ -41,13 +43,15 @@ interface PhotoAlbumProps {
 }
 
 export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) {
+  const { user } = useAuth()
+  const supabase = createClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(0)
-  const [showUpload, setShowUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [uploadUrl, setUploadUrl] = useState('')
   const [uploadCaption, setUploadCaption] = useState('')
 
   // Photo viewer state
@@ -108,30 +112,54 @@ export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) 
     fetchPhotoComments(newPhoto.id)
   }
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!uploadUrl.trim()) return
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0 || !user?.id) return
 
     setUploading(true)
     try {
-      const res = await fetch(`/api/cars/${carId}/photos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: uploadUrl.trim(),
-          caption: uploadCaption.trim() || null,
-        }),
-      })
+      for (const file of Array.from(files)) {
+        // Upload to Supabase storage
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `${user.id}/albums/${carId}/${fileName}`
 
-      if (res.ok) {
-        const data = await res.json()
-        setPhotos([data.photo, ...photos])
-        setUploadUrl('')
-        setUploadCaption('')
-        setShowUpload(false)
+        const { error: uploadError } = await supabase.storage
+          .from('motoverse-photos')
+          .upload(filePath, file)
+
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError)
+          continue
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('motoverse-photos')
+          .getPublicUrl(filePath)
+
+        // Save to database
+        const res = await fetch(`/api/cars/${carId}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: publicUrl,
+            caption: uploadCaption.trim() || null,
+          }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setPhotos(prev => [data.photo, ...prev])
+        }
+      }
+      setUploadCaption('')
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
       }
     } catch (error) {
       console.error('Failed to upload photo:', error)
+      alert('Failed to upload photo')
     } finally {
       setUploading(false)
     }
@@ -250,54 +278,30 @@ export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) 
             <span className="text-sm text-zinc-500">({photos.length})</span>
           </div>
           {isOwner && (
-            <button
-              onClick={() => setShowUpload(!showUpload)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-              Add Photo
-            </button>
+            <label className={`flex items-center gap-2 px-3 py-1.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="w-4 h-4" />
+                  Add Photos
+                </>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+                disabled={uploading}
+              />
+            </label>
           )}
         </div>
-
-        {/* Upload Form */}
-        {showUpload && (
-          <form onSubmit={handleUpload} className="p-4 border-b border-zinc-800 bg-zinc-800/50">
-            <div className="space-y-3">
-              <input
-                type="url"
-                value={uploadUrl}
-                onChange={(e) => setUploadUrl(e.target.value)}
-                placeholder="Image URL..."
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-orange-500"
-                required
-              />
-              <input
-                type="text"
-                value={uploadCaption}
-                onChange={(e) => setUploadCaption(e.target.value)}
-                placeholder="Caption (optional)..."
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-orange-500"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={uploading || !uploadUrl.trim()}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
-                >
-                  {uploading ? 'Uploading...' : 'Upload'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowUpload(false)}
-                  className="px-4 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
 
         {/* Photo Grid */}
         {photos.length === 0 ? (

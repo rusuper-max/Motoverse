@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Clock, Trophy, Upload } from 'lucide-react'
+import { ArrowLeft, Clock, Trophy, Upload, Loader2, X, FileImage } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
 
 interface CarData {
     id: string
@@ -51,9 +51,11 @@ export default function SubmitPerformancePage() {
     const router = useRouter()
     const locale = params.locale as Locale
     const carId = params.id as string
-    const dict = getDictionary(locale)
 
     const { user, loading: authLoading } = useAuth()
+    const supabase = createClient()
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
     const [car, setCar] = useState<CarData | null>(null)
     const [tracks, setTracks] = useState<Track[]>([])
     const [loading, setLoading] = useState(true)
@@ -67,10 +69,61 @@ export default function SubmitPerformancePage() {
     const [timeMinutes, setTimeMinutes] = useState('')
     const [trackId, setTrackId] = useState('')
     const [proofUrl, setProofUrl] = useState('')
-    const [proofType, setProofType] = useState('video')
+    const [proofType, setProofType] = useState('screenshot')
+    const [proofUploading, setProofUploading] = useState(false)
+    const [proofFileName, setProofFileName] = useState('')
     const [runDate, setRunDate] = useState(new Date().toISOString().split('T')[0])
     const [location, setLocation] = useState('')
     const [weather, setWeather] = useState('')
+
+    const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file || !user?.id) return
+
+        setProofUploading(true)
+        try {
+            const fileExt = file.name.split('.').pop()?.toLowerCase()
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+            const filePath = `${user.id}/performance/${carId}/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('motoverse-photos')
+                .upload(filePath, file)
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError)
+                alert('Failed to upload proof file')
+                return
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('motoverse-photos')
+                .getPublicUrl(filePath)
+
+            setProofUrl(publicUrl)
+            setProofFileName(file.name)
+
+            // Auto-detect proof type based on file
+            if (file.type.startsWith('video/')) {
+                setProofType('video')
+            } else if (file.type.startsWith('image/')) {
+                setProofType('screenshot')
+            }
+        } catch (err) {
+            console.error('Failed to upload proof:', err)
+            alert('Failed to upload proof file')
+        } finally {
+            setProofUploading(false)
+        }
+    }
+
+    const removeProof = () => {
+        setProofUrl('')
+        setProofFileName('')
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+        }
+    }
 
     useEffect(() => {
         fetchCar()
@@ -315,32 +368,53 @@ export default function SubmitPerformancePage() {
                         )}
                     </div>
 
-                    {/* Proof URL */}
+                    {/* Proof Upload */}
                     <div>
                         <label className="block text-sm font-medium text-zinc-400 mb-2">
                             <Upload className="w-4 h-4 inline mr-1" />
                             Proof (optional but recommended)
                         </label>
-                        <div className="flex gap-2">
-                            <input
-                                type="url"
-                                value={proofUrl}
-                                onChange={e => setProofUrl(e.target.value)}
-                                placeholder="https://youtube.com/watch?v=..."
-                                className="flex-1 px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500"
-                            />
-                            <select
-                                value={proofType}
-                                onChange={e => setProofType(e.target.value)}
-                                className="px-3 py-3 rounded-lg border border-zinc-700 bg-zinc-800/50 text-white"
-                            >
-                                <option value="video">Video</option>
-                                <option value="screenshot">Screenshot</option>
-                                <option value="telemetry">Telemetry</option>
-                            </select>
-                        </div>
+
+                        {proofUrl ? (
+                            <div className="flex items-center gap-3 p-3 rounded-lg border border-zinc-700 bg-zinc-800/50">
+                                <FileImage className="w-5 h-5 text-orange-400 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white truncate">{proofFileName}</p>
+                                    <p className="text-xs text-zinc-500 capitalize">{proofType}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={removeProof}
+                                    className="p-1 text-zinc-400 hover:text-red-400 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <label className={`flex items-center justify-center gap-3 p-6 rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 cursor-pointer hover:border-zinc-500 hover:bg-zinc-800/50 transition-colors ${proofUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                                {proofUploading ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 text-orange-400 animate-spin" />
+                                        <span className="text-zinc-400">Uploading...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="w-5 h-5 text-zinc-500" />
+                                        <span className="text-zinc-400">Upload screenshot, video, or telemetry file</span>
+                                    </>
+                                )}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,video/*,.csv,.json"
+                                    className="hidden"
+                                    onChange={handleProofUpload}
+                                    disabled={proofUploading}
+                                />
+                            </label>
+                        )}
                         <p className="text-xs text-zinc-500 mt-1">
-                            Link to video, screenshot, or telemetry data (Dragy, RaceBox, etc.)
+                            Upload a screenshot, video, or telemetry export (Dragy, RaceBox, etc.)
                         </p>
                     </div>
 

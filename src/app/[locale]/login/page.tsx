@@ -7,7 +7,7 @@ import { Car, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
-import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const params = useParams()
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const locale = params.locale as Locale
   const dict = getDictionary(locale)
   const t = dict.auth.login
-  const { refresh } = useAuth()
+  const supabase = createClient()
 
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -29,35 +29,37 @@ export default function LoginPage() {
     setErrorMessage('')
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+      // Check if identifier is email or username
+      let email = identifier
+      const isEmail = identifier.includes('@')
+
+      if (!isEmail) {
+        // Look up email by username via API
+        const lookupRes = await fetch(`/api/auth/lookup?username=${encodeURIComponent(identifier)}`)
+        if (!lookupRes.ok) {
+          setErrorMessage(t.errors.invalidCredentials)
+          setStatus('error')
+          return
+        }
+        const lookupData = await lookupRes.json()
+        email = lookupData.email
+      }
+
+      // Sign in directly with client-side Supabase
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
 
-      const data = await res.json()
-
-      if (res.ok) {
-        // Login successful - refresh auth state and redirect
-        await refresh()
-        router.push(`/${locale}`)
-      } else {
-        // Handle specific errors
-        switch (data.error) {
-          case 'invalid_credentials':
-            setErrorMessage(t.errors.invalidCredentials)
-            break
-          case 'invalid_email':
-            setErrorMessage(t.errors.invalidEmail)
-            break
-          case 'missing_fields':
-            setErrorMessage(t.errors.missingFields)
-            break
-          default:
-            setErrorMessage(t.errors.failed)
-        }
+      if (error) {
+        setErrorMessage(t.errors.invalidCredentials)
         setStatus('error')
+        return
       }
+
+      // Auth state change will be picked up by useAuth hook automatically via onAuthStateChange
+      // Redirect to home
+      router.push(`/${locale}`)
     } catch {
       setErrorMessage(t.errors.failed)
       setStatus('error')

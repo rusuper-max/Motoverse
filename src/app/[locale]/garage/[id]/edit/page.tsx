@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Car, Save, Trash2, Upload, X, Loader2 } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import ImageUpload from '@/components/ui/ImageUpload'
+import { createClient } from '@/lib/supabase/client'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
@@ -71,8 +71,11 @@ export default function EditCarPage() {
   const [torque, setTorque] = useState('')
   const [color, setColor] = useState('')
   const [mileage, setMileage] = useState('')
-  const [images, setImages] = useState<string[]>([])
+  const [thumbnail, setThumbnail] = useState<string | null>(null)
+  const [thumbnailUploading, setThumbnailUploading] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
+
+  const supabase = createClient()
 
   useEffect(() => {
     if (authLoading) return
@@ -109,7 +112,7 @@ export default function EditCarPage() {
         setTorque(carData.torque?.toString() || '')
         setColor(carData.color || '')
         setMileage(carData.mileage?.toString() || '')
-        setImages(carData.images || (carData.image ? [carData.image] : []))
+        setThumbnail(carData.image || null)
         setIsPublic(carData.isPublic ?? true)
       } else {
         router.push(`/${locale}/garage`)
@@ -142,7 +145,7 @@ export default function EditCarPage() {
           torque: torque || null,
           color: color || null,
           mileage: mileage || null,
-          image: images.length > 0 ? images[0] : null,
+          image: thumbnail,
           isPublic,
         }),
       })
@@ -181,6 +184,36 @@ export default function EditCarPage() {
     } finally {
       setDeleting(false)
       setShowDeleteConfirm(false)
+    }
+  }
+
+  // Handle thumbnail upload
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user?.id) return
+
+    setThumbnailUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `${user.id}/cars/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('motoverse-photos')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('motoverse-photos')
+        .getPublicUrl(filePath)
+
+      setThumbnail(publicUrl)
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload image')
+    } finally {
+      setThumbnailUploading(false)
     }
   }
 
@@ -399,17 +432,42 @@ export default function EditCarPage() {
               />
             </div>
 
-            {/* Photos */}
+            {/* Thumbnail Photo */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Photos (Max 10)</label>
-              <ImageUpload
-                value={images}
-                onChange={(newImages) => setImages(newImages)}
-                onRemove={(urlToRemove) => setImages(prev => prev.filter(url => url !== urlToRemove))}
-                bucket="motoverse-photos"
-                folderPath="cars"
-                maxFiles={10}
-              />
+              <label className="block text-sm font-medium text-zinc-300 mb-2">Thumbnail Photo</label>
+              <p className="text-xs text-zinc-500 mb-3">This image will be shown in listings. Use the Photo Album for more photos.</p>
+              <div className="flex items-start gap-4">
+                {thumbnail ? (
+                  <div className="relative w-[200px] h-[200px] rounded-xl overflow-hidden border border-zinc-700 group">
+                    <img src={thumbnail} alt="Car thumbnail" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setThumbnail(null)}
+                      className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer w-[200px] h-[200px] rounded-xl border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center gap-2 text-zinc-500 hover:border-orange-500 hover:text-orange-400 hover:bg-zinc-800/50 transition-all">
+                    {thumbnailUploading ? (
+                      <Loader2 className="w-8 h-8 animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8" />
+                        <span className="text-sm font-medium">Upload Photo</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleThumbnailUpload}
+                      disabled={thumbnailUploading}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* Visibility */}

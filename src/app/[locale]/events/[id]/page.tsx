@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Calendar, MapPin, Users, ArrowLeft, Car, Clock, UserPlus, Check, X } from 'lucide-react'
+import { Calendar, MapPin, Users, ArrowLeft, Car, Clock, UserPlus, Check, X, Trash2 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
@@ -71,6 +71,9 @@ export default function EventDetailPage() {
     const [selectedCarId, setSelectedCarId] = useState('')
     const [rsvpLoading, setRsvpLoading] = useState(false)
     const [showRsvpModal, setShowRsvpModal] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [deleteLoading, setDeleteLoading] = useState(false)
+    const [deleteConfirmCount, setDeleteConfirmCount] = useState<number | null>(null)
 
     useEffect(() => {
         fetchEvent()
@@ -149,6 +152,31 @@ export default function EventDetailPage() {
         }
     }
 
+    const handleDeleteEvent = async (confirm: boolean = false) => {
+        setDeleteLoading(true)
+        try {
+            const url = confirm ? `/api/events/${eventId}?confirm=true` : `/api/events/${eventId}`
+            const res = await fetch(url, {
+                method: 'DELETE',
+                credentials: 'include',
+            })
+            const data = await res.json()
+
+            if (data.requiresConfirmation) {
+                setDeleteConfirmCount(data.attendeeCount)
+                return
+            }
+
+            if (data.deleted) {
+                router.push(`/${locale}/events`)
+            }
+        } catch {
+            // ignore
+        } finally {
+            setDeleteLoading(false)
+        }
+    }
+
     if (loading) {
         return (
             <div className="min-h-screen pt-20 flex items-center justify-center">
@@ -160,6 +188,8 @@ export default function EventDetailPage() {
     if (!event) return null
 
     const isOrganizer = user?.id === event.organizer.id
+    const isPrivileged = user?.role === 'admin' || user?.role === 'founder'
+    const canDelete = isOrganizer || isPrivileged
     const userRsvp = event.attendees.find(a => a.user.id === user?.id)
     const isGoing = !!userRsvp
 
@@ -207,6 +237,17 @@ export default function EventDetailPage() {
                                 </span>
                                 <h1 className="text-2xl sm:text-3xl font-bold text-white mt-2">{event.title}</h1>
                             </div>
+                            {canDelete && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                >
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    Delete
+                                </Button>
+                            )}
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-4 mt-6">
@@ -362,6 +403,42 @@ export default function EventDetailPage() {
                                 </Button>
                                 <Button onClick={handleRsvp} disabled={rsvpLoading}>
                                     {rsvpLoading ? 'Saving...' : "I'm Going!"}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Event Modal */}
+                {showDeleteModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 max-w-md w-full mx-4">
+                            <h3 className="text-xl font-bold text-white mb-2">Delete Event?</h3>
+                            {deleteConfirmCount !== null ? (
+                                <p className="text-zinc-400 mb-6">
+                                    This event has <span className="text-orange-400 font-semibold">{deleteConfirmCount} {deleteConfirmCount === 1 ? 'person' : 'people'}</span> signed up.
+                                    Are you sure you want to cancel it?
+                                </p>
+                            ) : (
+                                <p className="text-zinc-400 mb-6">
+                                    Are you sure you want to delete this event? This action cannot be undone.
+                                </p>
+                            )}
+
+                            <div className="flex gap-3 justify-end">
+                                <Button variant="ghost" onClick={() => {
+                                    setShowDeleteModal(false)
+                                    setDeleteConfirmCount(null)
+                                }}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                                    onClick={() => handleDeleteEvent(deleteConfirmCount !== null)}
+                                    disabled={deleteLoading}
+                                >
+                                    {deleteLoading ? 'Deleting...' : deleteConfirmCount !== null ? 'Yes, Delete Event' : 'Delete Event'}
                                 </Button>
                             </div>
                         </div>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff } from 'lucide-react'
+import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff, BadgeCheck, Zap, Clock, Upload } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import RevLimiterRating from '@/components/ui/RevLimiterRating'
 import HistoryCard from '@/components/HistoryCard'
@@ -54,7 +54,12 @@ interface CarData {
     estimatedHp: number | null
     estimatedTorque: number | null
     dynoVerified: boolean
+    dynoProofUrl: string | null
     commentsEnabled: boolean
+    engineConfig?: {
+        horsepower: number | null
+        torque: number | null
+    } | null
     generation?: {
         name: string
         displayName: string | null
@@ -67,6 +72,7 @@ interface CarData {
         id: string
         username: string
         name: string | null
+        role?: string
     }
 }
 
@@ -432,15 +438,41 @@ export default function CarDetailPage() {
                                     {/* Quick Stats */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                                         {car.horsepower && (
-                                            <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                                            <div className="bg-zinc-800/50 rounded-lg p-3 text-center relative">
                                                 <p className="text-2xl font-bold text-white">{car.horsepower}</p>
                                                 <p className="text-xs text-zinc-500">HP</p>
+                                                {/* Verification badges */}
+                                                {car.dynoVerified && (
+                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full shadow-lg">
+                                                        <BadgeCheck className="w-3 h-3" />
+                                                        Verified
+                                                    </div>
+                                                )}
+                                                {!car.dynoVerified && car.engineConfig?.horsepower && car.horsepower === car.engineConfig.horsepower && (
+                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full shadow-lg">
+                                                        <Zap className="w-3 h-3" />
+                                                        Stock
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                         {car.torque && (
-                                            <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                                            <div className="bg-zinc-800/50 rounded-lg p-3 text-center relative">
                                                 <p className="text-2xl font-bold text-white">{car.torque}</p>
                                                 <p className="text-xs text-zinc-500">Nm</p>
+                                                {/* Verification badges */}
+                                                {car.dynoVerified && (
+                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full shadow-lg">
+                                                        <BadgeCheck className="w-3 h-3" />
+                                                        Verified
+                                                    </div>
+                                                )}
+                                                {!car.dynoVerified && car.engineConfig?.torque && car.torque === car.engineConfig.torque && (
+                                                    <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full shadow-lg">
+                                                        <Zap className="w-3 h-3" />
+                                                        Stock
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                         {car.mileage && (
@@ -503,6 +535,15 @@ export default function CarDetailPage() {
                                                 <h3 className="text-sm font-medium text-zinc-400 mb-2">Description</h3>
                                                 <p className="text-zinc-300">{car.description}</p>
                                             </div>
+                                        )}
+
+                                        {/* Power Verification Status */}
+                                        {(car.horsepower || car.torque) && (
+                                            <PowerVerificationSection
+                                                car={car}
+                                                isOwner={isOwner}
+                                                onUpdate={fetchCar}
+                                            />
                                         )}
 
                                         {/* Performance Stats */}
@@ -950,6 +991,170 @@ function SpecDisplaySection({ title, items }: { title: string; items: { label: s
                         <p className="text-white capitalize text-sm">{item.value}</p>
                     </div>
                 ))}
+            </div>
+        </div>
+    )
+}
+
+function PowerVerificationSection({ car, isOwner, onUpdate }: { car: CarData; isOwner: boolean; onUpdate: () => void }) {
+    const [uploading, setUploading] = useState(false)
+    const [showUploadForm, setShowUploadForm] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const { user } = useAuth()
+
+    const isStockHp = car.engineConfig?.horsepower && car.horsepower === car.engineConfig.horsepower
+    const isStockTorque = car.engineConfig?.torque && car.torque === car.engineConfig.torque
+    const hasPendingProof = !!car.dynoProofUrl && !car.dynoVerified
+
+    const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file || !user?.id) return
+
+        setUploading(true)
+        try {
+            const supabase = (await import('@/lib/supabase/client')).createClient()
+            const fileExt = file.name.split('.').pop()?.toLowerCase()
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+            const filePath = `${user.id}/dyno/${car.id}/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('motoverse-photos')
+                .upload(filePath, file)
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError)
+                alert('Failed to upload file')
+                return
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('motoverse-photos')
+                .getPublicUrl(filePath)
+
+            // Submit verification request
+            const res = await fetch(`/api/cars/${car.id}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'submit',
+                    dynoProofUrl: publicUrl,
+                }),
+            })
+
+            if (res.ok) {
+                setShowUploadForm(false)
+                onUpdate()
+            } else {
+                const data = await res.json()
+                alert(data.message || 'Failed to submit verification request')
+            }
+        } catch (err) {
+            console.error('Failed to upload proof:', err)
+            alert('Failed to upload proof file')
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    return (
+        <div className="border border-zinc-700 rounded-xl p-4 bg-zinc-800/30">
+            <h3 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
+                <BadgeCheck className="w-4 h-4" />
+                Power Verification
+            </h3>
+
+            <div className="space-y-3">
+                {/* Current Status */}
+                <div className="flex flex-wrap gap-2">
+                    {car.dynoVerified ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium">
+                            <BadgeCheck className="w-4 h-4" />
+                            Dyno Verified
+                        </div>
+                    ) : hasPendingProof ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm font-medium">
+                            <Clock className="w-4 h-4" />
+                            Pending Verification
+                        </div>
+                    ) : (isStockHp || isStockTorque) ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium">
+                            <Zap className="w-4 h-4" />
+                            Stock Power
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-700/50 text-zinc-400 rounded-lg text-sm">
+                            Not Verified
+                        </div>
+                    )}
+                </div>
+
+                {/* Stock values comparison */}
+                {car.engineConfig && (car.engineConfig.horsepower || car.engineConfig.torque) && (
+                    <div className="text-xs text-zinc-500">
+                        Stock specs: {car.engineConfig.horsepower && `${car.engineConfig.horsepower} HP`}
+                        {car.engineConfig.horsepower && car.engineConfig.torque && ' / '}
+                        {car.engineConfig.torque && `${car.engineConfig.torque} Nm`}
+                    </div>
+                )}
+
+                {/* Owner actions */}
+                {isOwner && !car.dynoVerified && (
+                    <>
+                        {!showUploadForm ? (
+                            <button
+                                onClick={() => setShowUploadForm(true)}
+                                className="text-sm text-orange-400 hover:text-orange-300 underline"
+                            >
+                                {hasPendingProof ? 'Update dyno proof' : 'Request verification with dyno proof'}
+                            </button>
+                        ) : (
+                            <div className="mt-3 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+                                <p className="text-sm text-zinc-300 mb-3">
+                                    Upload your dyno sheet or video to get verified power figures.
+                                </p>
+                                <label className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-zinc-600 cursor-pointer hover:border-orange-500 hover:bg-zinc-700/50 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    {uploading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                                            <span className="text-zinc-400 text-sm">Uploading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-4 h-4 text-zinc-400" />
+                                            <span className="text-zinc-400 text-sm">Upload dyno proof (image/video)</span>
+                                        </>
+                                    )}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*,video/*,.pdf"
+                                        className="hidden"
+                                        onChange={handleProofUpload}
+                                        disabled={uploading}
+                                    />
+                                </label>
+                                <button
+                                    onClick={() => setShowUploadForm(false)}
+                                    className="mt-2 text-xs text-zinc-500 hover:text-zinc-400"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* Show proof link if exists */}
+                {car.dynoProofUrl && (
+                    <a
+                        href={car.dynoProofUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-orange-400 hover:text-orange-300 underline"
+                    >
+                        View dyno proof →
+                    </a>
+                )}
             </div>
         </div>
     )
