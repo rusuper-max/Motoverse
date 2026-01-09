@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Car, Check, Search, Loader2, Database, Globe } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import ImageUpload from '@/components/ui/ImageUpload'
@@ -145,6 +145,57 @@ export default function AddCarPage() {
   useEffect(() => {
     fetchLocalMakes()
   }, [])
+
+  // Auto-fill from URL params
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (loadingMakes || localMakes.length === 0) return
+
+    const makeParam = searchParams.get('make')
+    if (makeParam && !selectedMake) {
+      const match = localMakes.find(m => m.name.toLowerCase() === makeParam.toLowerCase())
+      if (match) {
+        handleSelectMake({ name: match.name, id: match.id }, 'local')
+      }
+    }
+  }, [loadingMakes, localMakes, searchParams, selectedMake])
+
+  useEffect(() => {
+    if (loadingModels || localModels.length === 0) return
+
+    const modelParam = searchParams.get('model')
+    if (modelParam && selectedMake && !selectedModel) {
+      const match = localModels.find(m => m.name.toLowerCase() === modelParam.toLowerCase())
+      if (match) {
+        handleSelectModel({ name: match.name, id: match.id })
+      }
+    }
+  }, [loadingModels, localModels, searchParams, selectedMake, selectedModel])
+
+  useEffect(() => {
+    if (loadingGenerations || localGenerations.length === 0) return
+
+    const genParam = searchParams.get('generation')
+    if (genParam && selectedModel && !selectedGeneration) {
+      const match = localGenerations.find(g => g.name === genParam)
+      if (match) {
+        handleSelectGeneration(match)
+      }
+    }
+  }, [loadingGenerations, localGenerations, searchParams, selectedModel, selectedGeneration])
+
+  useEffect(() => {
+    if (loadingEngines || localEngines.length === 0) return
+
+    const engineParam = searchParams.get('engine')
+    if (engineParam && selectedGeneration && !selectedEngine) {
+      const match = localEngines.find(e => e.name === engineParam)
+      if (match) {
+        handleSelectEngine(match)
+      }
+    }
+  }, [loadingEngines, localEngines, searchParams, selectedGeneration, selectedEngine])
 
   // Fetch local makes from our database
   const fetchLocalMakes = async () => {
@@ -537,7 +588,7 @@ export default function AddCarPage() {
 
   return (
     <div className="min-h-screen pt-20 pb-12">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back button */}
         <Link
           href={`/${locale}/garage`}
@@ -555,7 +606,7 @@ export default function AddCarPage() {
 
         {/* Progress indicator */}
         {step !== 'start' && (
-          <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+          <div className="flex items-center gap-2 mb-8 flex-wrap">
             {(() => {
               // Determine which steps to show based on data source
               const showGeneration = dataSource === 'local' && (step === 'generation' || step === 'engine' || selectedGeneration || localGenerations.length > 0)
@@ -1184,14 +1235,14 @@ export default function AddCarPage() {
 
               {/* Photos */}
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-zinc-300 mb-2">Photos (Max 10)</label>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">Photos (Thumbnail)</label>
                 <ImageUpload
                   value={images}
                   onChange={(newImages) => setImages(newImages)}
                   onRemove={(urlToRemove) => setImages(prev => prev.filter(url => url !== urlToRemove))}
                   bucket="machinebio-photos"
                   folderPath="cars"
-                  maxFiles={10}
+                  maxFiles={1}
                 />
               </div>
             </div>

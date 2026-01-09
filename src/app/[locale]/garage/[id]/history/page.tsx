@@ -87,7 +87,8 @@ interface HistoryEdgeData extends Record<string, unknown> {
 interface PopupData {
     x: number
     y: number
-    post: { id: string; title: string; thumbnail: string | null }
+    nodeData: HistoryFlowNodeData
+    post: { id: string; title: string; thumbnail: string | null } | null
 }
 
 type HistoryFlowNode = Node<HistoryFlowNodeData>
@@ -474,18 +475,13 @@ export default function HistoryPage() {
     }, [contextMenu, rawNodes])
 
     const onNodeClick = useCallback((event: React.MouseEvent, node: HistoryFlowNode) => {
-        // If node has a linked post, show the popup near the node
-        if (node.data.post) {
-            // Calculate position relative to the viewport/container
-            // event.clientX/Y are reliable for screen positioning
-            setPopupData({
-                x: event.clientX,
-                y: event.clientY,
-                post: node.data.post
-            })
-        } else {
-            setPopupData(null)
-        }
+        // Always show node detail popup on click
+        setPopupData({
+            x: event.clientX,
+            y: event.clientY,
+            nodeData: node.data,
+            post: node.data.post || null
+        })
     }, [])
 
 
@@ -795,61 +791,84 @@ export default function HistoryPage() {
                 />
             )}
 
-            {/* Floating Post Popup */}
+            {/* Floating Node Detail Popup */}
             {popupData && (
                 <div
-                    className="fixed z-50 w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                    className="fixed z-50 w-80 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                     style={{
-                        left: popupData.x,
-                        top: popupData.y,
-                        transform: 'translate(-50%, -110%)' // Center horizontally above the click
+                        left: Math.min(popupData.x, window.innerWidth - 340),
+                        top: Math.max(20, popupData.y - 20),
+                        transform: 'translateY(-100%)'
                     }}
                 >
-                    {/* Thumbnail */}
-                    {popupData.post.thumbnail && (
-                        <div className="h-32 w-full bg-zinc-800 relative">
-                            <img
-                                src={popupData.post.thumbnail}
-                                alt=""
-                                className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-80" />
-                        </div>
-                    )}
-
-                    <div className="p-4 relative">
-                        {!popupData.post.thumbnail && (
-                            <div className="absolute top-4 right-4 w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center">
-                                <FileText className="w-4 h-4 text-orange-500" />
+                    {/* Header */}
+                    <div className="p-4 border-b border-zinc-800">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                                <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{popupData.nodeData.type}</span>
+                                <h3 className="text-white font-bold mt-1 line-clamp-2">{popupData.nodeData.title}</h3>
                             </div>
-                        )}
-
-                        <h4 className="font-bold text-white text-sm mb-1 line-clamp-2 pr-6">
-                            {popupData.post.title}
-                        </h4>
-                        <div className="flex items-center gap-1 text-xs text-orange-400 mb-3">
-                            <FileText className="w-3 h-3" />
-                            <span>Linked Blog Post</span>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <Link
-                                href={`/${locale}/posts/${popupData.post.id}`}
-                                className="flex-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg text-center transition-colors"
-                            >
-                                Read Post
-                            </Link>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     setPopupData(null)
                                 }}
-                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium rounded-lg transition-colors"
+                                className="shrink-0 w-6 h-6 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white"
                             >
-                                Close
+                                ×
                             </button>
                         </div>
+
+                        {/* Meta Info */}
+                        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-zinc-400">
+                            {popupData.nodeData.date && (
+                                <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(popupData.nodeData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </span>
+                            )}
+                            {popupData.nodeData.mileage && (
+                                <span className="flex items-center gap-1">
+                                    <Car className="w-3 h-3" />
+                                    {popupData.nodeData.mileage.toLocaleString()} km
+                                </span>
+                            )}
+                            {popupData.nodeData.cost && popupData.nodeData.cost > 0 && (
+                                <span className="flex items-center gap-1 text-green-400 font-medium">
+                                    <DollarSign className="w-3 h-3" />
+                                    €{popupData.nodeData.cost.toLocaleString()}
+                                </span>
+                            )}
+                        </div>
                     </div>
+
+                    {/* Description */}
+                    <div className="p-4 max-h-40 overflow-y-auto">
+                        {popupData.nodeData.description ? (
+                            <p className="text-sm text-zinc-300 whitespace-pre-wrap">{popupData.nodeData.description}</p>
+                        ) : (
+                            <p className="text-sm text-zinc-600 italic">No description provided</p>
+                        )}
+                    </div>
+
+                    {/* Linked Blog Post */}
+                    {popupData.post && (
+                        <div className="p-4 pt-0">
+                            <Link
+                                href={`/${locale}/posts/${popupData.post.id}`}
+                                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-orange-500/50 transition-colors"
+                            >
+                                {popupData.post.thumbnail && (
+                                    <img src={popupData.post.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-orange-400 font-medium">Linked Blog Post</p>
+                                    <p className="text-white text-sm font-medium truncate">{popupData.post.title}</p>
+                                </div>
+                                <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
+                            </Link>
+                        </div>
+                    )}
 
                     {/* Arrow Pointer */}
                     <div

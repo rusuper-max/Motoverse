@@ -7,7 +7,8 @@ import {
     ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Timer, History,
     Star, User, Bell, BellOff, MessageCircleOff, BadgeCheck, Zap,
     Clock, TrendingUp, TrendingDown, DollarSign, ChevronRight,
-    Share2, MapPin, Calendar, Activity, BookOpen, Plus, PenLine, Upload, AlertCircle
+    Share2, MapPin, Calendar, Activity, BookOpen, Plus, PenLine, Upload, AlertCircle,
+    ChevronDown, ChevronUp, Home, ExternalLink
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import RevLimiterRating from '@/components/ui/RevLimiterRating'
@@ -73,8 +74,11 @@ interface HistoryNodeSummary {
     id: string
     type: string
     title: string
+    description: string | null
     date: string
     cost: number | null
+    mileage: number | null
+    post: { id: string; title: string; thumbnail: string | null } | null
 }
 
 interface Rating {
@@ -105,10 +109,14 @@ export default function CarDetailPage() {
     const [avgRating, setAvgRating] = useState(0)
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
+    const [editingPower, setEditingPower] = useState(false)
+    const [powerValues, setPowerValues] = useState({ horsepower: '', torque: '' })
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
     const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'history' | 'rating'>('overview')
     const [showAddNodeModal, setShowAddNodeModal] = useState(false)
+    const [historyExpanded, setHistoryExpanded] = useState(false)
+    const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null)
 
     // Rating form state
     const [myRating, setMyRating] = useState(0)
@@ -313,6 +321,23 @@ export default function CarDetailPage() {
         } catch { /* ignore */ }
     }
 
+    const handleSavePower = async () => {
+        try {
+            const res = await fetch(`/api/cars/${carId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    horsepower: parseInt(powerValues.horsepower) || 0,
+                    torque: parseInt(powerValues.torque) || 0
+                }),
+            })
+            if (res.ok) {
+                fetchCar()
+                setEditingPower(false)
+            }
+        } catch { /* ignore */ }
+    }
+
     const handleAdminEditPower = async (field: 'horsepower' | 'torque', value: number) => {
         try {
             const res = await fetch(`/api/cars/${carId}`, {
@@ -430,6 +455,12 @@ export default function CarDetailPage() {
                                     </div>
                                 )}
                             </div>
+                            <Link href={`/${locale}/feed`}>
+                                <Button variant="outline" className="backdrop-blur-md bg-white/5 border-white/10 hover:bg-white/10">
+                                    <Home className="w-4 h-4 mr-2" />
+                                    Feed
+                                </Button>
+                            </Link>
                             <Button variant="outline" className="backdrop-blur-md bg-white/5 border-white/10 hover:bg-white/10">
                                 <Share2 className="w-4 h-4 mr-2" />
                                 Share
@@ -502,7 +533,7 @@ export default function CarDetailPage() {
                                         <SpecItem icon={Timer} label="Generation" value={genName || 'N/A'} />
                                         <SpecItem icon={Activity} label="Fuel Type" value={car.fuelType || 'N/A'} />
                                         <SpecItem icon={Calendar} label="Color" value={car.color || 'N/A'} />
-                                        <SpecItem icon={DollarSign} label="Investment" value={totalInvestment > 0 ? `€${totalInvestment.toLocaleString()}` : 'No costs recorded'} sub={`${historyNodes.length} event${historyNodes.length !== 1 ? 's' : ''}`} />
+                                        <SpecItem icon={DollarSign} label="Investment" value={totalInvestment > 0 ? `€${totalInvestment.toLocaleString()}` : 'No costs recorded'} sub={`${historyNodes.length} event${historyNodes.length !== 1 ? 's' : ''}`} link={{ href: `/${locale}/garage/${carId}/history`, label: 'View Detailed History' }} />
                                     </div>
 
                                     {/* Performance Times */}
@@ -557,7 +588,8 @@ export default function CarDetailPage() {
 
                             {activeTab === 'history' && (
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between flex-wrap gap-3">
                                         {isOwner && (
                                             <Button onClick={() => setShowAddNodeModal(true)}>
                                                 <Plus className="w-4 h-4 mr-2" />
@@ -566,45 +598,118 @@ export default function CarDetailPage() {
                                         )}
                                         <Link
                                             href={`/${locale}/garage/${carId}/history`}
-                                            className="text-sm text-orange-400 hover:text-orange-300 font-medium ml-auto"
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 font-medium text-sm transition-colors ml-auto"
                                         >
-                                            View Full History →
+                                            <History className="w-4 h-4" />
+                                            View Detailed History
                                         </Link>
                                     </div>
+
                                     {historyNodes.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
                                             <History className="w-12 h-12 mb-4 opacity-20" />
                                             <p>No history events yet</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
-                                            {historyNodes.map(node => {
-                                                // Format date without hours/minutes
-                                                const formattedDate = node.date ? new Date(node.date).toLocaleDateString('en-US', {
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric'
-                                                }) : ''
-                                                return (
-                                                    <Link
-                                                        key={node.id}
-                                                        href={`/${locale}/garage/${carId}/history/${node.id}`}
-                                                        className="block p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
-                                                    >
-                                                        <div className="flex justify-between items-start">
-                                                            <div>
-                                                                <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{node.type}</span>
-                                                                <h3 className="text-white font-medium mt-1">{node.title}</h3>
-                                                                <p className="text-xs text-zinc-500 mt-1">{formattedDate}</p>
+                                        <>
+                                            {/* Expand/Collapse Button */}
+                                            <button
+                                                onClick={() => setHistoryExpanded(!historyExpanded)}
+                                                className="w-full flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                                            >
+                                                <span className="text-sm text-zinc-400">
+                                                    {historyExpanded ? 'Hide' : 'Expand'} History Events ({historyNodes.length})
+                                                </span>
+                                                {historyExpanded ? (
+                                                    <ChevronUp className="w-4 h-4 text-zinc-500" />
+                                                ) : (
+                                                    <ChevronDown className="w-4 h-4 text-zinc-500" />
+                                                )}
+                                            </button>
+
+                                            {/* Events List */}
+                                            {historyExpanded && (
+                                                <div className="space-y-3">
+                                                    {[...historyNodes].reverse().slice(0, 5).map(node => {
+                                                        const formattedDate = node.date ? new Date(node.date).toLocaleDateString('en-US', {
+                                                            year: 'numeric', month: 'short', day: 'numeric'
+                                                        }) : ''
+                                                        const isExpanded = expandedNodeId === node.id
+
+                                                        return (
+                                                            <div
+                                                                key={node.id}
+                                                                className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden"
+                                                            >
+                                                                {/* Event Header */}
+                                                                <button
+                                                                    onClick={() => setExpandedNodeId(isExpanded ? null : node.id)}
+                                                                    className="w-full p-4 text-left hover:bg-zinc-800/50 transition-colors"
+                                                                >
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{node.type}</span>
+                                                                            <h3 className="text-white font-medium mt-1">{node.title}</h3>
+                                                                            <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
+                                                                                <span>{formattedDate}</span>
+                                                                                {node.mileage && <span>{node.mileage.toLocaleString()} km</span>}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-3 shrink-0">
+                                                                            {node.cost && node.cost > 0 && (
+                                                                                <span className="text-green-400 font-medium">€{node.cost.toLocaleString()}</span>
+                                                                            )}
+                                                                            {isExpanded ? (
+                                                                                <ChevronUp className="w-4 h-4 text-zinc-500" />
+                                                                            ) : (
+                                                                                <ChevronDown className="w-4 h-4 text-zinc-500" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+
+                                                                {/* Expanded Content */}
+                                                                {isExpanded && (
+                                                                    <div className="px-4 pb-4 pt-0 border-t border-zinc-800">
+                                                                        {node.description ? (
+                                                                            <p className="text-zinc-400 text-sm mt-3 whitespace-pre-wrap">{node.description}</p>
+                                                                        ) : (
+                                                                            <p className="text-zinc-600 text-sm mt-3 italic">No description</p>
+                                                                        )}
+
+                                                                        {node.post && (
+                                                                            <Link
+                                                                                href={`/${locale}/blog/${node.post.id}`}
+                                                                                className="mt-4 flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-orange-500/50 transition-colors"
+                                                                            >
+                                                                                {node.post.thumbnail && (
+                                                                                    <img src={node.post.thumbnail} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                                                                                )}
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <p className="text-xs text-orange-400 font-medium">Linked Blog Post</p>
+                                                                                    <p className="text-white text-sm font-medium truncate">{node.post.title}</p>
+                                                                                </div>
+                                                                                <ExternalLink className="w-4 h-4 text-zinc-500 shrink-0" />
+                                                                            </Link>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            {node.cost && node.cost > 0 && (
-                                                                <span className="text-green-400 font-medium">€{node.cost.toLocaleString()}</span>
-                                                            )}
-                                                        </div>
-                                                    </Link>
-                                                )
-                                            })}
-                                        </div>
+                                                        )
+                                                    })}
+
+                                                    {/* Show more indicator */}
+                                                    {historyNodes.length > 5 && (
+                                                        <Link
+                                                            href={`/${locale}/garage/${carId}/history`}
+                                                            className="block p-4 rounded-xl bg-zinc-900/50 border border-dashed border-zinc-700 text-center text-sm text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
+                                                        >
+                                                            +{historyNodes.length - 5} more events — View Detailed History
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -714,43 +819,97 @@ export default function CarDetailPage() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <PowerMetric
-                                        label="Horsepower"
-                                        value={car.horsepower || 0}
-                                        unit="HP"
-                                        stock={car.engineConfig?.horsepower}
-                                        verified={car.dynoVerified}
-                                        hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
-                                        isStock={car.isStockPower || (!car.dynoVerified && car.engineConfig?.horsepower === car.horsepower)}
-                                        ranking={percentiles?.horsepower}
-                                    />
-                                    <PowerMetric
-                                        label="Torque"
-                                        value={car.torque || 0}
-                                        unit="Nm"
-                                        stock={car.engineConfig?.torque}
-                                        verified={car.torqueVerified}
-                                        hasPendingProof={!!car.dynoProofUrl && !car.torqueVerified}
-                                        isStock={car.isStockPower || (!car.torqueVerified && car.engineConfig?.torque === car.torque)}
-                                        ranking={percentiles?.torque}
-                                    />
+                                    {editingPower ? (
+                                        <>
+                                            <div className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800">
+                                                <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Horsepower</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        value={powerValues.horsepower}
+                                                        onChange={(e) => setPowerValues({ ...powerValues, horsepower: e.target.value })}
+                                                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-white text-lg font-bold focus:outline-none focus:border-orange-500"
+                                                    />
+                                                    <span className="text-xs text-zinc-600 font-medium">HP</span>
+                                                </div>
+                                            </div>
+                                            <div className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800">
+                                                <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Torque</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        value={powerValues.torque}
+                                                        onChange={(e) => setPowerValues({ ...powerValues, torque: e.target.value })}
+                                                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-white text-lg font-bold focus:outline-none focus:border-orange-500"
+                                                    />
+                                                    <span className="text-xs text-zinc-600 font-medium">Nm</span>
+                                                </div>
+                                            </div>
+                                            <div className="col-span-2 flex justify-end gap-2 mt-2">
+                                                <Button size="sm" variant="ghost" onClick={() => setEditingPower(false)}>Cancel</Button>
+                                                <Button size="sm" onClick={handleSavePower}>Save Values</Button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PowerMetric
+                                                label="Horsepower"
+                                                value={car.horsepower || 0}
+                                                unit="HP"
+                                                stock={car.engineConfig?.horsepower}
+                                                verified={car.dynoVerified}
+                                                hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
+                                                isStock={car.isStockPower || (!car.dynoVerified && car.engineConfig?.horsepower === car.horsepower)}
+                                                ranking={percentiles?.horsepower}
+                                            />
+                                            <PowerMetric
+                                                label="Torque"
+                                                value={car.torque || 0}
+                                                unit="Nm"
+                                                stock={car.engineConfig?.torque}
+                                                verified={car.torqueVerified}
+                                                hasPendingProof={!!car.dynoProofUrl && !car.torqueVerified}
+                                                isStock={car.isStockPower || (!car.torqueVerified && car.engineConfig?.torque === car.torque)}
+                                                ranking={percentiles?.torque}
+                                            />
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Admin Controls */}
                                 {isAdmin && (
                                     <div className="mt-6 pt-4 border-t border-zinc-800">
                                         <p className="text-xs text-zinc-500 mb-2 font-medium uppercase">Admin Controls</p>
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="ghost" className="h-8 text-xs border border-zinc-700 bg-zinc-800/50">
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 text-xs border border-zinc-700 bg-zinc-800/50"
+                                                disabled={editingPower}
+                                                onClick={() => {
+                                                    setPowerValues({ horsepower: String(car.horsepower || 0), torque: String(car.torque || 0) })
+                                                    setEditingPower(true)
+                                                }}
+                                            >
                                                 <Edit3 className="w-3 h-3 mr-1.5" /> Edit Values
                                             </Button>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
-                                                className="h-8 text-xs border border-zinc-700 bg-zinc-800/50 text-green-400 hover:text-green-300"
+                                                className={`h-8 text-xs border border-zinc-700 bg-zinc-800/50 ${car.dynoVerified ? 'text-green-400 hover:text-red-400' : 'text-zinc-400 hover:text-green-400'}`}
                                                 onClick={() => handleAdminVerify('hp', !car.dynoVerified)}
                                             >
-                                                <BadgeCheck className="w-3 h-3 mr-1.5" /> {car.dynoVerified ? 'Unverify' : 'Verify Dyno'}
+                                                <BadgeCheck className="w-3 h-3 mr-1.5" />
+                                                HP: {car.dynoVerified ? 'Verified' : 'Unverified'}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className={`h-8 text-xs border border-zinc-700 bg-zinc-800/50 ${car.torqueVerified ? 'text-green-400 hover:text-red-400' : 'text-zinc-400 hover:text-green-400'}`}
+                                                onClick={() => handleAdminVerify('torque', !car.torqueVerified)}
+                                            >
+                                                <BadgeCheck className="w-3 h-3 mr-1.5" />
+                                                Torque: {car.torqueVerified ? 'Verified' : 'Unverified'}
                                             </Button>
                                         </div>
                                     </div>
@@ -807,16 +966,33 @@ function StatStripItem({ label, value }: { label: string; value: string | null |
     )
 }
 
-function SpecItem({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
+function SpecItem({ icon: Icon, label, value, sub, ranking, link }: {
+    icon: any
+    label: string
+    value: string
+    sub?: string
+    ranking?: { rank: number; total: number; percentile: number } | null
+    link?: { href: string; label: string }
+}) {
     return (
         <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700 transition-colors">
             <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400">
                 <Icon className="w-4 h-4" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-500 font-medium uppercase tracking-wide">{label}</p>
                 <p className="text-zinc-200 font-medium">{value || '-'}</p>
                 {sub && <p className="text-xs text-zinc-600 mt-0.5">{sub}</p>}
+                {ranking && ranking.percentile <= 50 && (
+                    <p className="text-[10px] font-bold text-purple-400 mt-1">
+                        Top {ranking.percentile}% (#{ranking.rank} of {ranking.total})
+                    </p>
+                )}
+                {link && (
+                    <Link href={link.href} className="inline-flex items-center gap-1 text-[11px] text-orange-400 hover:text-orange-300 font-medium mt-2">
+                        {link.label} <ChevronRight className="w-3 h-3" />
+                    </Link>
+                )}
             </div>
         </div>
     )

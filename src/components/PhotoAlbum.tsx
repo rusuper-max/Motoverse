@@ -320,23 +320,23 @@ export default function PhotoAlbum({ carId, isOwner, locale }: PhotoAlbumProps) 
               <div
                 key={photo.id}
                 onClick={() => openPhoto(photo, index)}
-                className="relative aspect-square cursor-pointer group overflow-hidden"
+                className="relative aspect-square cursor-pointer group overflow-hidden bg-zinc-800"
               >
                 <img
                   src={photo.thumbnail || photo.url}
                   alt={photo.caption || ''}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                   {photo.avgRating !== null && (
-                    <div className="text-white font-bold text-sm">
+                    <div className="text-white font-bold text-sm transform translate-y-2 group-hover:translate-y-0 transition-transform duration-200">
                       {(photo.avgRating / 1000).toFixed(1)}k RPM
                     </div>
                   )}
                 </div>
                 {/* Rating indicator */}
                 {photo.avgRating !== null && photo.avgRating >= 8000 && (
-                  <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse pointer-events-none" />
                 )}
               </div>
             ))}

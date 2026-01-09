@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { Trophy, Clock, Car, Filter, ChevronDown, Star, DollarSign, AlertTriangle } from 'lucide-react'
+import { Trophy, Clock, Car, Filter, ChevronDown, Star } from 'lucide-react'
 import PistonRating from '@/components/ui/PistonRating'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
@@ -68,32 +68,6 @@ interface RatedCar {
     } | null
 }
 
-interface InvestmentEntry {
-    carId: string
-    totalInvestment: number
-    car: {
-        id: string
-        year: number
-        nickname: string | null
-        image: string | null
-        make: string | null
-        model: string | null
-        owner: {
-            id: string
-            username: string
-            name: string | null
-        }
-        generation: {
-            name: string
-            displayName: string | null
-            model: {
-                name: string
-                make: { name: string; slug: string }
-            }
-        } | null
-    }
-}
-
 const CATEGORIES = [
     { id: 'community', label: '🏆 Community Picks', unit: '' },
     { id: '0-100', label: '0-100 km/h', unit: 's' },
@@ -102,7 +76,6 @@ const CATEGORIES = [
     { id: '402m', label: '1/4 Mile (402m)', unit: 's' },
     { id: '1000m', label: '1/2 Mile (1000m)', unit: 's' },
     { id: 'track', label: 'Track Times', unit: '' },
-    { id: 'investment', label: '💸 Big Spenders', unit: '' },
 ]
 
 export default function LeaderboardsPage() {
@@ -112,7 +85,6 @@ export default function LeaderboardsPage() {
 
     const [times, setTimes] = useState<PerformanceTime[]>([])
     const [ratedCars, setRatedCars] = useState<RatedCar[]>([])
-    const [investments, setInvestments] = useState<InvestmentEntry[]>([])
     const [makes, setMakes] = useState<CarMake[]>([])
     const [loading, setLoading] = useState(true)
     const [category, setCategory] = useState('community')
@@ -144,10 +116,6 @@ export default function LeaderboardsPage() {
             fetchRatedCars()
             return
         }
-        if (category === 'investment') {
-            fetchInvestments()
-            return
-        }
         setLoading(true)
         try {
             const params = new URLSearchParams({
@@ -176,21 +144,6 @@ export default function LeaderboardsPage() {
             if (res.ok) {
                 const data = await res.json()
                 setRatedCars(data.cars || [])
-            }
-        } catch {
-            // ignore
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const fetchInvestments = async () => {
-        setLoading(true)
-        try {
-            const res = await fetch('/api/leaderboards/investment?limit=50')
-            if (res.ok) {
-                const data = await res.json()
-                setInvestments(data.leaderboard || [])
             }
         } catch {
             // ignore
@@ -332,82 +285,8 @@ export default function LeaderboardsPage() {
                     </div>
                 )}
 
-                {/* Investment Leaderboard */}
-                {category === 'investment' && (
-                    <div className="mb-8">
-                        {/* Disclaimer */}
-                        <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="text-yellow-400 font-medium">Just for Fun!</p>
-                                    <p className="text-yellow-200/70 text-sm mt-1">
-                                        This leaderboard is based on self-reported car history data and is not verified.
-                                        Anyone can enter any amount in their car history, so take these numbers with a grain of salt.
-                                        This is purely for entertainment!
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {loading ? (
-                            <div className="text-center py-12 text-zinc-500">Loading...</div>
-                        ) : investments.length === 0 ? (
-                            <div className="text-center py-12">
-                                <DollarSign className="w-12 h-12 mx-auto mb-3 text-zinc-700" />
-                                <p className="text-lg font-medium text-zinc-400">No investments tracked yet</p>
-                                <p className="text-sm text-zinc-600">Add costs to your car history to appear here!</p>
-                            </div>
-                        ) : (
-                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {investments.map((entry, index) => (
-                                    <Link
-                                        key={entry.carId}
-                                        href={`/${locale}/garage/${entry.carId}`}
-                                        className="group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-green-500/50 transition-all"
-                                    >
-                                        {/* Rank badge */}
-                                        <div className="relative">
-                                            {entry.car.image ? (
-                                                <div className="aspect-video bg-zinc-800">
-                                                    <img src={entry.car.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                                </div>
-                                            ) : (
-                                                <div className="aspect-video bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                                                    <Car className="w-12 h-12 text-zinc-700" />
-                                                </div>
-                                            )}
-                                            <div className={`absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index === 0 ? 'bg-yellow-500 text-black' :
-                                                index === 1 ? 'bg-zinc-300 text-black' :
-                                                    index === 2 ? 'bg-amber-700 text-white' :
-                                                        'bg-zinc-700 text-zinc-300'
-                                                }`}>
-                                                {index + 1}
-                                            </div>
-                                            <div className="absolute top-3 right-3 px-2 py-1 bg-green-500 rounded-lg text-white text-sm font-bold">
-                                                €{entry.totalInvestment.toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div className="p-4">
-                                            <h3 className="font-semibold text-white group-hover:text-green-400 transition-colors">
-                                                {entry.car.generation?.model.make.name || entry.car.make} {entry.car.generation?.model.name || entry.car.model}
-                                            </h3>
-                                            <p className="text-sm text-zinc-500">
-                                                {entry.car.year} {entry.car.generation?.displayName || entry.car.generation?.name}
-                                            </p>
-                                            <p className="text-xs text-zinc-500 mt-2">
-                                                by @{entry.car.owner.username}
-                                            </p>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
                 {/* Leaderboard Table (for performance categories) */}
-                {category !== 'community' && category !== 'investment' && (
+                {category !== 'community' && (
                     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">

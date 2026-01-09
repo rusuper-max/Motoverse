@@ -223,7 +223,7 @@ export default async function GenerationPage({ params }: Props) {
                     {enginesByFuelType[fuelType].map((engine) => (
                       <div
                         key={engine.id}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors"
+                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors flex flex-col h-full"
                       >
                         <h4 className="font-semibold text-white text-lg mb-3">
                           {engine.name}
@@ -278,6 +278,16 @@ export default async function GenerationPage({ params }: Props) {
                             )}
                           </div>
                         </div>
+
+                        <Link
+                          href={localePath(`/garage/add?make=${encodeURIComponent(make.name)}&model=${encodeURIComponent(model.name)}&generation=${encodeURIComponent(generation.name)}&engine=${encodeURIComponent(engine.name)}`)}
+                          className="mt-auto pt-4"
+                        >
+                          <Button size="sm" variant="secondary" className="w-full">
+                            <Plus className="w-4 h-4 mr-2" />
+                            {dict.cars.addToGarage}
+                          </Button>
+                        </Link>
                       </div>
                     ))}
                   </div>

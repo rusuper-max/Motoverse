@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { ChevronLeft, Car, Calendar } from 'lucide-react'
+import { ChevronLeft, Car, Calendar, Plus } from 'lucide-react'
 import { locales, Locale } from '@/i18n/config'
 import { getDictionary } from '@/i18n'
 
@@ -177,6 +177,7 @@ export default async function MakePage({ params }: Props) {
                         </div>
                       </Link>
                     )
+
                   })}
                 </div>
               </section>

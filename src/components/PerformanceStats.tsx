@@ -16,6 +16,11 @@ interface PerformanceTime {
     track?: {
         name: string
     } | null
+    rankings?: {
+        global: { rank: number; total: number }
+        make: { rank: number; total: number; name: string } | null
+        model: { rank: number; total: number; name: string } | null
+    } | null
 }
 
 interface PerformanceStatsProps {
@@ -154,6 +159,27 @@ export default function PerformanceStats({ carId, showOnlyVerified = false, isOw
                                     <span className="text-xs text-orange-400">Click to verify</span>
                                 )}
                             </div>
+
+                            {/* Rankings */}
+                            {time.rankings && (
+                                <div className="mt-2 group/rank relative">
+                                    <p className="text-[10px] font-bold text-purple-400 cursor-help">
+                                        #{time.rankings.global.rank} Global
+                                    </p>
+                                    {/* Hover tooltip for make/model rankings */}
+                                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover/rank:block z-50">
+                                        <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl p-2 text-xs whitespace-nowrap">
+                                            <p className="text-zinc-300 font-medium mb-1">#{time.rankings.global.rank} of {time.rankings.global.total}</p>
+                                            {time.rankings.make && (
+                                                <p className="text-purple-400">#{time.rankings.make.rank} in {time.rankings.make.name}</p>
+                                            )}
+                                            {time.rankings.model && (
+                                                <p className="text-orange-400">#{time.rankings.model.rank} in {time.rankings.model.name}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Admin Menu */}
                             {isAdmin && showMenu && (
