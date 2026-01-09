@@ -20,6 +20,7 @@ export interface SessionUser {
   role?: string
   isVerified?: boolean
   profileCompleted?: boolean
+  unitSystem?: string
 }
 
 // Founder email - gets founder role (highest privilege)
@@ -115,6 +116,7 @@ export async function getSessionUser(req?: Request): Promise<SessionUser | null>
         role: true,
         isVerified: true,
         profileCompleted: true,
+        unitSystem: true,
       }
     })
 

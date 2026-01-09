@@ -110,6 +110,8 @@ export default {
     beFirstToAddModel: 'Sei der Erste der seinen {make} {model} hinzufügt!',
     addYourCar: 'Dein Auto hinzufügen',
     posts: 'Beiträge',
+    generations: 'Generationen',
+    engineOptions: 'Motorisierungen',
   },
 
   // Body types

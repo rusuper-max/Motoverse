@@ -25,6 +25,7 @@ model User {
   role                   String                @default("user")
   socialLinks            Json?
   website                String?
+  unitSystem             String                @default("metric") // "metric" or "imperial"
   cars                   Car[]
   carComments            CarComment[]
   carCommentLikes        CarCommentLike[]
@@ -161,6 +162,10 @@ model Car {
   hpVerifiedAt     DateTime?
   hpVerifiedBy     String?
 
+  // Direct make/model for API-based entry (NHTSA)
+  make             String?
+  model            String?
+
   // VIN Verification
   vin              String?
   vinVerified      Boolean           @default(false)
@@ -172,6 +177,11 @@ model Car {
   torqueVerified   Boolean           @default(false)
   torqueVerifiedAt DateTime?
   torqueVerifiedBy String?
+
+  // Stock Power Badge (admin can mark as stock even without engineConfig)
+  isStockPower     Boolean           @default(false)
+  stockMarkedAt    DateTime?
+  stockMarkedBy    String?
 
   // Performance Times Verification (0-100, 0-200, 100-200, 402m)
   // These are stored in PerformanceTime model with status field

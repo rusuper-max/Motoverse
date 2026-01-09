@@ -19,7 +19,9 @@ import {
   Check,
   Upload,
   Car,
-  X
+  X,
+  Settings,
+  Gauge
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
@@ -33,7 +35,7 @@ const ACCOUNT_TYPES = [
   { value: 'collector', label: 'Collector', description: 'Classic or exotic car collector' },
 ]
 
-type SettingsTab = 'profile' | 'account' | 'privacy' | 'notifications'
+type SettingsTab = 'profile' | 'account' | 'preferences' | 'privacy' | 'notifications'
 
 interface UserSettings {
   id: string
@@ -55,6 +57,7 @@ interface UserSettings {
   } | null
   isVerified: boolean
   role: string
+  unitSystem: 'metric' | 'imperial'
 }
 
 interface GarageCar {
@@ -90,6 +93,7 @@ export default function SettingsPage() {
     country: '',
     accountType: '',
     website: '',
+    unitSystem: 'metric' as 'metric' | 'imperial',
     socialLinks: {
       instagram: '',
       youtube: '',
@@ -131,6 +135,7 @@ export default function SettingsPage() {
         country: data.user.country || '',
         accountType: data.user.accountType || '',
         website: data.user.website || '',
+        unitSystem: data.user.unitSystem || 'metric',
         socialLinks: {
           instagram: data.user.socialLinks?.instagram || '',
           youtube: data.user.socialLinks?.youtube || '',
@@ -355,6 +360,7 @@ export default function SettingsPage() {
   const tabs: { id: SettingsTab; label: string; icon: typeof User }[] = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'account', label: 'Account', icon: Lock },
+    { id: 'preferences', label: 'Preferences', icon: Settings },
     { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
   ]
@@ -801,6 +807,104 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </section>
+              </div>
+            )}
+
+            {/* Preferences Tab */}
+            {activeTab === 'preferences' && (
+              <div className="space-y-8">
+                <section className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-zinc-800">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <Gauge className="w-5 h-5" />
+                      Units &amp; Measurements
+                    </h2>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-3">Unit System</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          onClick={() => setFormData({ ...formData, unitSystem: 'metric' })}
+                          className={`p-4 rounded-xl border-2 transition-all ${
+                            formData.unitSystem === 'metric'
+                              ? 'border-orange-500 bg-orange-500/10'
+                              : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                          }`}
+                        >
+                          <p className="text-white font-semibold mb-1">Metric</p>
+                          <p className="text-xs text-zinc-400">km, km/h, kg, Nm, °C</p>
+                        </button>
+                        <button
+                          onClick={() => setFormData({ ...formData, unitSystem: 'imperial' })}
+                          className={`p-4 rounded-xl border-2 transition-all ${
+                            formData.unitSystem === 'imperial'
+                              ? 'border-orange-500 bg-orange-500/10'
+                              : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                          }`}
+                        >
+                          <p className="text-white font-semibold mb-1">Imperial (US)</p>
+                          <p className="text-xs text-zinc-400">mi, mph, lbs, lb-ft, °F</p>
+                        </button>
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-3">
+                        This affects how distances, speeds, weights, and torque are displayed throughout the app.
+                      </p>
+                    </div>
+
+                    <div className="border-t border-zinc-800 pt-6">
+                      <h3 className="text-sm font-medium text-zinc-300 mb-4">Unit Conversions</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="bg-zinc-800/50 rounded-lg p-3">
+                          <p className="text-zinc-500 text-xs mb-1">Distance</p>
+                          <p className="text-white">
+                            {formData.unitSystem === 'metric' ? 'Kilometers (km)' : 'Miles (mi)'}
+                          </p>
+                        </div>
+                        <div className="bg-zinc-800/50 rounded-lg p-3">
+                          <p className="text-zinc-500 text-xs mb-1">Speed</p>
+                          <p className="text-white">
+                            {formData.unitSystem === 'metric' ? 'km/h' : 'mph'}
+                          </p>
+                        </div>
+                        <div className="bg-zinc-800/50 rounded-lg p-3">
+                          <p className="text-zinc-500 text-xs mb-1">Weight</p>
+                          <p className="text-white">
+                            {formData.unitSystem === 'metric' ? 'Kilograms (kg)' : 'Pounds (lbs)'}
+                          </p>
+                        </div>
+                        <div className="bg-zinc-800/50 rounded-lg p-3">
+                          <p className="text-zinc-500 text-xs mb-1">Torque</p>
+                          <p className="text-white">
+                            {formData.unitSystem === 'metric' ? 'Newton-meters (Nm)' : 'Pound-feet (lb-ft)'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 font-medium"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 

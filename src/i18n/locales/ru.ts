@@ -110,6 +110,8 @@ export default {
     beFirstToAddModel: 'Будь первым кто добавит свой {make} {model}!',
     addYourCar: 'Добавить Свою Машину',
     posts: 'записей',
+    generations: 'Поколения',
+    engineOptions: 'Варианты двигателей',
   },
 
   // Body types

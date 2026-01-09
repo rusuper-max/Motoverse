@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff, BadgeCheck, Zap, Clock, Upload, Info, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Car, Edit3, Save, X, Gauge, Settings, Wrench, Timer, FileText, PenLine, Star, MessageSquare, Plus, History, Bell, BellOff, User, MessageCircleOff, BadgeCheck, Zap, Clock, Upload, Info, AlertCircle, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import RevLimiterRating from '@/components/ui/RevLimiterRating'
 import HistoryCard from '@/components/HistoryCard'
@@ -30,6 +30,9 @@ interface CarData {
     horsepower: number | null
     torque: number | null
     color: string | null
+    // Direct make/model for API-based entry (NHTSA)
+    make: string | null
+    model: string | null
     // Detailed specs
     curbWeight: number | null
     weightWithDriver: number | null
@@ -54,8 +57,10 @@ interface CarData {
     estimatedHp: number | null
     estimatedTorque: number | null
     dynoVerified: boolean
+    torqueVerified: boolean
     dynoProofUrl: string | null
     commentsEnabled: boolean
+    isStockPower: boolean
     engineConfig?: {
         horsepower: number | null
         torque: number | null
@@ -78,9 +83,10 @@ interface CarData {
 
 interface HistoryNodeSummary {
     id: string
-    nodeType: string
+    type: string
     title: string
     date: string
+    cost: number | null
 }
 
 interface Rating {
@@ -315,6 +321,54 @@ export default function CarDetailPage() {
     }
 
     const isOwner = user?.id === car?.owner?.id
+    const isAdmin = user?.role && ['admin', 'founder', 'moderator'].includes(user.role)
+    const canEdit = isOwner || isAdmin
+
+    // Admin handlers for inline editing/verification
+    const handleAdminVerify = async (verificationType: 'hp' | 'torque', verified: boolean) => {
+        try {
+            const res = await fetch(`/api/admin/cars/${carId}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ verificationType, verified }),
+            })
+            if (res.ok) {
+                fetchCar()
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    const handleAdminEditPower = async (field: 'horsepower' | 'torque', value: number) => {
+        try {
+            const res = await fetch(`/api/cars/${carId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value }),
+            })
+            if (res.ok) {
+                fetchCar()
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    const handleAdminMarkStock = async () => {
+        try {
+            const res = await fetch(`/api/admin/cars/${carId}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ verificationType: 'stock', verified: true }),
+            })
+            if (res.ok) {
+                fetchCar()
+            }
+        } catch {
+            // ignore
+        }
+    }
 
     if (loading || authLoading) {
         return (
@@ -332,7 +386,10 @@ export default function CarDetailPage() {
         )
     }
 
-    const carName = car.nickname || `${car.generation?.model.make.name} ${car.generation?.model.name}`
+    // Get car make/model - prefer generation-based, fallback to direct fields
+    const carMakeName = car.generation?.model.make.name || car.make || ''
+    const carModelName = car.generation?.model.name || car.model || ''
+    const carName = car.nickname || `${carMakeName} ${carModelName}`.trim()
     const genName = car.generation?.displayName || car.generation?.name || ''
 
     return (
@@ -369,7 +426,7 @@ export default function CarDetailPage() {
                                         <div>
                                             <h1 className="text-2xl sm:text-3xl font-bold text-white">{carName}</h1>
                                             <p className="text-zinc-400 mt-1">
-                                                {car.year} {car.generation?.model.make.name} {car.generation?.model.name} {genName}
+                                                {car.year} {carMakeName} {carModelName} {genName}
                                             </p>
                                             {/* Owner Info */}
                                             <Link
@@ -442,17 +499,29 @@ export default function CarDetailPage() {
                                                 value={car.horsepower}
                                                 unit="HP"
                                                 isVerified={car.dynoVerified}
-                                                isStock={!car.dynoVerified && car.engineConfig?.horsepower === car.horsepower}
+                                                isStock={car.isStockPower || (!car.dynoVerified && car.engineConfig?.horsepower === car.horsepower)}
                                                 hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
+                                                isAdmin={!!isAdmin}
+                                                verificationType="hp"
+                                                onVerify={(verified) => handleAdminVerify('hp', verified)}
+                                                onEdit={(value) => handleAdminEditPower('horsepower', value)}
+                                                onMarkStock={handleAdminMarkStock}
+                                                stockValue={car.engineConfig?.horsepower}
                                             />
                                         )}
                                         {car.torque && (
                                             <PowerStatBadge
                                                 value={car.torque}
                                                 unit="Nm"
-                                                isVerified={car.dynoVerified}
-                                                isStock={!car.dynoVerified && car.engineConfig?.torque === car.torque}
-                                                hasPendingProof={!!car.dynoProofUrl && !car.dynoVerified}
+                                                isVerified={car.torqueVerified}
+                                                isStock={car.isStockPower || (!car.torqueVerified && car.engineConfig?.torque === car.torque)}
+                                                hasPendingProof={!!car.dynoProofUrl && !car.torqueVerified}
+                                                isAdmin={!!isAdmin}
+                                                verificationType="torque"
+                                                onVerify={(verified) => handleAdminVerify('torque', verified)}
+                                                onEdit={(value) => handleAdminEditPower('torque', value)}
+                                                onMarkStock={handleAdminMarkStock}
+                                                stockValue={car.engineConfig?.torque}
                                             />
                                         )}
                                         {car.mileage && (
@@ -468,6 +537,39 @@ export default function CarDetailPage() {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Performance Times */}
+                                    <div className="mt-6">
+                                        <PerformanceStats carId={carId} isOwner={isOwner} isAdmin={!!isAdmin} />
+                                    </div>
+
+                                    {/* Money Spent from History */}
+                                    {(() => {
+                                        const totalSpent = historyNodes.reduce((sum, node) => sum + (node.cost || 0), 0)
+                                        if (totalSpent === 0 && historyNodes.length === 0) return null
+                                        return (
+                                            <Link
+                                                href={`/${locale}/garage/${car.id}/history`}
+                                                className="mt-6 flex items-center justify-between p-4 bg-zinc-800/50 hover:bg-zinc-800 rounded-xl border border-zinc-700/50 hover:border-zinc-600 transition-all group cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                                                        <DollarSign className="w-5 h-5 text-green-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm text-zinc-400">Total Investment</p>
+                                                        <p className="text-xl font-bold text-white">
+                                                            {totalSpent > 0 ? `€${totalSpent.toLocaleString()}` : 'No costs recorded'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-zinc-500 group-hover:text-orange-400 transition-colors">
+                                                    <span className="text-sm">{historyNodes.length} event{historyNodes.length !== 1 ? 's' : ''}</span>
+                                                    <History className="w-4 h-4" />
+                                                </div>
+                                            </Link>
+                                        )
+                                    })()}
                                 </div>
                             </div>
 
@@ -525,9 +627,6 @@ export default function CarDetailPage() {
                                                 onUpdate={fetchCar}
                                             />
                                         )}
-
-                                        {/* Performance Stats */}
-                                        <PerformanceStats carId={car.id} />
                                     </div>
                                 )}
 
@@ -683,10 +782,10 @@ export default function CarDetailPage() {
                                                                 style={{ opacity: 1 - i * 0.15 }}
                                                             >
                                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                                    node.nodeType === 'purchase' ? 'bg-green-500/30' :
-                                                                    node.nodeType === 'modification' ? 'bg-orange-500/30' :
-                                                                    node.nodeType === 'maintenance' ? 'bg-blue-500/30' :
-                                                                    node.nodeType === 'milestone' ? 'bg-purple-500/30' :
+                                                                    node.type === 'purchase' ? 'bg-green-500/30' :
+                                                                    node.type === 'modification' ? 'bg-orange-500/30' :
+                                                                    node.type === 'maintenance' ? 'bg-blue-500/30' :
+                                                                    node.type === 'milestone' ? 'bg-purple-500/30' :
                                                                     'bg-zinc-700'
                                                                 }`}>
                                                                     <History className="w-5 h-5 text-white" />
@@ -976,14 +1075,32 @@ function SpecDisplaySection({ title, items }: { title: string; items: { label: s
     )
 }
 
-function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof }: {
+function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof, isAdmin, onVerify, onEdit, onMarkStock, verificationType, stockValue }: {
     value: number
     unit: string
     isVerified: boolean
     isStock: boolean
     hasPendingProof: boolean
+    isAdmin?: boolean
+    onVerify?: (verified: boolean) => void
+    onEdit?: (newValue: number) => void
+    onMarkStock?: () => void
+    verificationType?: 'hp' | 'torque'
+    stockValue?: number | null
 }) {
     const [showTooltip, setShowTooltip] = useState(false)
+    const [showAdminMenu, setShowAdminMenu] = useState(false)
+    const [editValue, setEditValue] = useState(String(value))
+    const [isEditing, setIsEditing] = useState(false)
+
+    // Calculate percentage difference from stock
+    const getDiffFromStock = () => {
+        if (!stockValue || stockValue === 0 || value === stockValue) return null
+        const diff = ((value - stockValue) / stockValue) * 100
+        return diff
+    }
+
+    const diff = getDiffFromStock()
 
     const getBadgeConfig = () => {
         if (isVerified) {
@@ -1021,10 +1138,52 @@ function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof }: {
     const badge = getBadgeConfig()
     const Icon = badge.icon
 
+    const handleSaveEdit = () => {
+        const num = parseInt(editValue, 10)
+        if (!isNaN(num) && num > 0 && onEdit) {
+            onEdit(num)
+        }
+        setIsEditing(false)
+    }
+
     return (
-        <div className="bg-zinc-800/50 rounded-lg p-3 text-center relative">
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-xs text-zinc-500">{unit}</p>
+        <div
+            className={`bg-zinc-800/50 rounded-lg p-3 text-center relative ${isAdmin ? 'cursor-pointer hover:bg-zinc-700/50 transition-colors' : ''}`}
+            onClick={() => isAdmin && setShowAdminMenu(!showAdminMenu)}
+        >
+            {isEditing ? (
+                <div className="flex flex-col items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <input
+                        type="number"
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        className="w-20 text-center text-xl font-bold bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-white"
+                        autoFocus
+                    />
+                    <div className="flex gap-1">
+                        <button onClick={handleSaveEdit} className="text-xs bg-green-600 px-2 py-0.5 rounded text-white">Save</button>
+                        <button onClick={() => setIsEditing(false)} className="text-xs bg-zinc-600 px-2 py-0.5 rounded text-white">Cancel</button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* Power difference indicator */}
+                    {diff !== null && (
+                        <div className={`absolute -top-2 -left-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-lg ${
+                            diff > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                        }`}>
+                            {diff > 0 ? (
+                                <TrendingUp className="w-3 h-3" />
+                            ) : (
+                                <TrendingDown className="w-3 h-3" />
+                            )}
+                            {diff > 0 ? '+' : ''}{Math.round(diff)}%
+                        </div>
+                    )}
+                    <p className="text-2xl font-bold text-white">{value}</p>
+                    <p className="text-xs text-zinc-500">{unit}</p>
+                </>
+            )}
             <div
                 className="absolute -top-2 -right-2 cursor-help"
                 onMouseEnter={() => setShowTooltip(true)}
@@ -1034,12 +1193,61 @@ function PowerStatBadge({ value, unit, isVerified, isStock, hasPendingProof }: {
                     <Icon className="w-3 h-3" />
                     {badge.label}
                 </div>
-                {showTooltip && (
+                {showTooltip && !showAdminMenu && (
                     <div className="absolute right-0 top-full mt-1 z-50 w-48 p-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl text-xs text-zinc-300 text-left">
                         {badge.tooltip}
+                        {isAdmin && <p className="mt-1 text-orange-400">Click to edit/verify</p>}
                     </div>
                 )}
             </div>
+
+            {/* Admin Menu - positioned above to avoid overflow */}
+            {isAdmin && showAdminMenu && (
+                <div
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[100] bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl p-3 min-w-[160px]"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <p className="text-xs text-zinc-500 mb-2 font-medium">Admin Actions</p>
+                    <div className="flex flex-col gap-1">
+                        <button
+                            onClick={() => { setIsEditing(true); setShowAdminMenu(false); }}
+                            className="text-xs px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-left flex items-center gap-2"
+                        >
+                            <Edit3 className="w-3 h-3" />
+                            Edit Value
+                        </button>
+                        {!isVerified && onVerify && (
+                            <button
+                                onClick={() => { onVerify(true); setShowAdminMenu(false); }}
+                                className="text-xs px-2 py-1.5 bg-green-600/20 hover:bg-green-600/30 rounded text-green-400 text-left flex items-center gap-2"
+                            >
+                                <BadgeCheck className="w-3 h-3" />
+                                Verify (Dyno)
+                            </button>
+                        )}
+                        {!isStock && !isVerified && onMarkStock && (
+                            <button
+                                onClick={() => { onMarkStock(); setShowAdminMenu(false); }}
+                                className="text-xs px-2 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 rounded text-blue-400 text-left flex items-center gap-2"
+                            >
+                                <Zap className="w-3 h-3" />
+                                Mark as Stock
+                            </button>
+                        )}
+                        {(isVerified || isStock) && onVerify && (
+                            <button
+                                onClick={() => { onVerify(false); setShowAdminMenu(false); }}
+                                className="text-xs px-2 py-1.5 bg-red-600/20 hover:bg-red-600/30 rounded text-red-400 text-left flex items-center gap-2"
+                            >
+                                <X className="w-3 h-3" />
+                                Remove Badge
+                            </button>
+                        )}
+                    </div>
+                    {/* Arrow pointing down */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-zinc-700" />
+                </div>
+            )}
         </div>
     )
 }

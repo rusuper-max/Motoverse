@@ -66,8 +66,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params
+    const isAdmin = user.role && ['admin', 'founder', 'moderator'].includes(user.role)
 
-    // Check ownership
+    // Check ownership or admin status
     const existingCar = await prisma.car.findUnique({
       where: { id },
       select: { ownerId: true },
@@ -77,12 +78,14 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 })
     }
 
-    if (existingCar.ownerId !== user.id) {
+    const isOwner = existingCar.ownerId === user.id
+    if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 })
     }
 
     const body = await req.json()
     const {
+      year,
       nickname,
       description,
       image,
@@ -102,6 +105,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const car = await prisma.car.update({
       where: { id },
       data: {
+        year: year !== undefined ? (year ? parseInt(String(year), 10) : null) : undefined,
         nickname: nickname !== undefined ? nickname || null : undefined,
         description: description !== undefined ? description || null : undefined,
         image: image !== undefined ? image || null : undefined,

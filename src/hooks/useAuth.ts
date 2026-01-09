@@ -13,6 +13,7 @@ export interface AuthUser {
   role?: string
   isVerified?: boolean
   profileCompleted?: boolean
+  unitSystem?: 'metric' | 'imperial'
 }
 
 interface AuthState {
@@ -35,8 +36,14 @@ export function useAuth() {
     try {
       // We can use the existing status endpoint which now uses the verified Supabase session
       const res = await fetch('/api/auth/status', {
+        method: 'GET',
         cache: 'no-store',
-        headers: { 'x-no-cache': String(Date.now()) }
+        credentials: 'include',
+        headers: {
+          'x-no-cache': String(Date.now()),
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        }
       })
       if (res.ok) {
         const data = await res.json()
@@ -53,17 +60,29 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Get initial session with retry logic for fresh page loads
+    const checkSession = async () => {
+      // First try
+      let { data: { session } } = await supabase.auth.getSession()
+
+      // If no session, wait a bit and try once more (cookies may still be setting)
+      if (!session) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        const retry = await supabase.auth.getSession()
+        session = retry.data.session
+      }
+
       if (!mounted) return
+
       if (session?.user) {
-        fetchProfile(session.user.id).then(user => {
-          if (mounted) setState({ authenticated: !!user, user, loading: false })
-        })
+        const user = await fetchProfile(session.user.id)
+        if (mounted) setState({ authenticated: !!user, user, loading: false })
       } else {
         setState({ authenticated: false, user: null, loading: false })
       }
-    })
+    }
+
+    checkSession()
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {

@@ -31,6 +31,7 @@ export async function GET(
         socialLinks: true,
         isVerified: true,
         role: true,
+        unitSystem: true,
         createdAt: true,
         cars: {
           where: { isPublic: true },
@@ -170,12 +171,19 @@ export async function PATCH(
       accountType,
       website,
       socialLinks,
+      unitSystem,
     } = body
 
     // Validate account type if provided
     const validAccountTypes = ['enthusiast', 'mechanic', 'tuner', 'dealer', 'racer', 'collector']
     if (accountType && !validAccountTypes.includes(accountType)) {
       return NextResponse.json({ error: 'Invalid account type' }, { status: 400 })
+    }
+
+    // Validate unit system if provided
+    const validUnitSystems = ['metric', 'imperial']
+    if (unitSystem && !validUnitSystems.includes(unitSystem)) {
+      return NextResponse.json({ error: 'Invalid unit system' }, { status: 400 })
     }
 
     // Check if profile is being completed
@@ -193,6 +201,7 @@ export async function PATCH(
         accountType: accountType !== undefined ? accountType || null : undefined,
         website: website !== undefined ? website || null : undefined,
         socialLinks: socialLinks !== undefined ? socialLinks : undefined,
+        unitSystem: unitSystem !== undefined ? unitSystem : undefined,
         profileCompleted: isCompletingProfile ? true : undefined,
       },
       select: {
@@ -207,6 +216,7 @@ export async function PATCH(
         accountType: true,
         website: true,
         socialLinks: true,
+        unitSystem: true,
         profileCompleted: true,
         isVerified: true,
         role: true,

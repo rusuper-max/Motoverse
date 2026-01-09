@@ -135,6 +135,7 @@ export default function EditCarPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          year: year ? parseInt(year, 10) : undefined,
           nickname: nickname || null,
           description: description || null,
           engine: engine || null,

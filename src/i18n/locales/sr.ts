@@ -110,6 +110,8 @@ export default {
     beFirstToAddModel: 'Budi prvi koji će dodati svoj {make} {model}!',
     addYourCar: 'Dodaj Svoj Automobil',
     posts: 'objava',
+    generations: 'Generacije',
+    engineOptions: 'Opcije Motora',
   },
 
   // Body types

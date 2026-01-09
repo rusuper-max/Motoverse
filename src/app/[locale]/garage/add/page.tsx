@@ -3,50 +3,74 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Car, Check, Settings } from 'lucide-react'
+import { ArrowLeft, Car, Check, Search, Loader2, Database, Globe } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import ImageUpload from '@/components/ui/ImageUpload'
 import { getDictionary } from '@/i18n'
 import { Locale } from '@/i18n/config'
 import { useAuth } from '@/hooks/useAuth'
 
-interface Make {
+// Types for our local database
+interface LocalMake {
   id: string
   name: string
   slug: string
   logo: string | null
-  isPopular: boolean
 }
 
-interface Model {
+interface LocalModel {
   id: string
   name: string
   slug: string
-  _count?: { generations: number }
 }
 
-interface Generation {
+interface LocalGeneration {
   id: string
   name: string
   displayName: string | null
   startYear: number
   endYear: number | null
-  bodyType: string | null
-  _count?: { engines: number; cars: number }
+  _count?: { engines: number }
 }
 
-interface EngineConfig {
+interface LocalEngine {
   id: string
   name: string
-  displacement: string | null
-  fuelType: string
   horsepower: number | null
   torque: number | null
+  displacement: string | null
+  fuelType: string
   transmission: string | null
   drivetrain: string | null
 }
 
-type Step = 'make' | 'model' | 'generation' | 'engine' | 'details'
+// Types for NHTSA API
+interface NHTSAMake {
+  name: string
+  id: number
+}
+
+interface NHTSAModel {
+  name: string
+  id: number
+}
+
+interface VINData {
+  make: string | null
+  model: string | null
+  year: number | null
+  bodyType: string | null
+  trim: string | null
+  horsepower: number | null
+  displacement: string | null
+  cylinders: number | null
+  fuelType: string | null
+  transmission: string | null
+  drivetrain: string | null
+}
+
+type Step = 'start' | 'year' | 'make' | 'model' | 'generation' | 'engine' | 'details'
+type DataSource = 'local' | 'nhtsa'
 
 export default function AddCarPage() {
   const params = useParams()
@@ -58,27 +82,43 @@ export default function AddCarPage() {
   const { authenticated, loading: authLoading } = useAuth()
 
   // Step state
-  const [step, setStep] = useState<Step>('make')
+  const [step, setStep] = useState<Step>('start')
+  const [dataSource, setDataSource] = useState<DataSource>('local')
+
+  // VIN state
+  const [vin, setVin] = useState('')
+  const [vinLoading, setVinLoading] = useState(false)
+  const [vinError, setVinError] = useState('')
+  const [vinData, setVinData] = useState<VINData | null>(null)
 
   // Selection state
-  const [selectedMake, setSelectedMake] = useState<Make | null>(null)
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null)
-  const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null)
-  const [selectedEngine, setSelectedEngine] = useState<EngineConfig | null>(null)
-  const [useCustomEngine, setUseCustomEngine] = useState(false)
+  const [selectedYear, setSelectedYear] = useState<number | null>(null)
+  const [selectedMake, setSelectedMake] = useState<{ name: string; id: string | number } | null>(null)
+  const [selectedModel, setSelectedModel] = useState<{ name: string; id: string | number } | null>(null)
+  const [selectedGeneration, setSelectedGeneration] = useState<LocalGeneration | null>(null)
+  const [selectedEngine, setSelectedEngine] = useState<LocalEngine | null>(null)
 
-  // Data state
-  const [makes, setMakes] = useState<Make[]>([])
-  const [models, setModels] = useState<Model[]>([])
-  const [generations, setGenerations] = useState<Generation[]>([])
-  const [engines, setEngines] = useState<EngineConfig[]>([])
-  const [loadingMakes, setLoadingMakes] = useState(true)
+  // Local database state
+  const [localMakes, setLocalMakes] = useState<LocalMake[]>([])
+  const [localModels, setLocalModels] = useState<LocalModel[]>([])
+  const [localGenerations, setLocalGenerations] = useState<LocalGeneration[]>([])
+  const [localEngines, setLocalEngines] = useState<LocalEngine[]>([])
+
+  // NHTSA state (fallback)
+  const [nhtsaMakes, setNhtsaMakes] = useState<NHTSAMake[]>([])
+  const [nhtsaModels, setNhtsaModels] = useState<NHTSAModel[]>([])
+
+  // Loading state
+  const [loadingMakes, setLoadingMakes] = useState(false)
   const [loadingModels, setLoadingModels] = useState(false)
   const [loadingGenerations, setLoadingGenerations] = useState(false)
   const [loadingEngines, setLoadingEngines] = useState(false)
 
+  // Search state
+  const [makeSearch, setMakeSearch] = useState('')
+  const [modelSearch, setModelSearch] = useState('')
+
   // Form state
-  const [year, setYear] = useState('')
   const [nickname, setNickname] = useState('')
   const [engine, setEngine] = useState('')
   const [transmission, setTransmission] = useState('')
@@ -94,134 +134,304 @@ export default function AddCarPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // Search state
-  const [makeSearch, setMakeSearch] = useState('')
-
   useEffect(() => {
     if (authLoading) return
     if (!authenticated) {
       router.push(`/${locale}/login`)
-      return
     }
-    fetchMakes()
   }, [authenticated, authLoading, locale, router])
 
-  const fetchMakes = async () => {
+  // Fetch local makes on mount
+  useEffect(() => {
+    fetchLocalMakes()
+  }, [])
+
+  // Fetch local makes from our database
+  const fetchLocalMakes = async () => {
     try {
       const res = await fetch('/api/makes')
       if (res.ok) {
         const data = await res.json()
-        setMakes(data.makes)
+        setLocalMakes(data.makes || [])
       }
     } catch {
-      // Ignore
-    } finally {
-      setLoadingMakes(false)
+      // ignore
     }
   }
 
-  const fetchModels = async (makeId: string) => {
+  // Fetch local models for a make
+  const fetchLocalModels = async (makeId: string) => {
     setLoadingModels(true)
     try {
       const res = await fetch(`/api/makes/${makeId}/models`)
       if (res.ok) {
         const data = await res.json()
-        setModels(data.models)
+        setLocalModels(data.models || [])
       }
     } catch {
-      // Ignore
+      // ignore
     } finally {
       setLoadingModels(false)
     }
   }
 
-  const fetchGenerations = async (modelId: string) => {
+  // Fetch generations for a model
+  const fetchLocalGenerations = async (modelId: string) => {
     setLoadingGenerations(true)
     try {
       const res = await fetch(`/api/models/${modelId}/generations`)
       if (res.ok) {
         const data = await res.json()
-        setGenerations(data.generations)
+        setLocalGenerations(data.generations || [])
       }
     } catch {
-      // Ignore
+      // ignore
     } finally {
       setLoadingGenerations(false)
     }
   }
 
-  const fetchEngines = async (generationId: string) => {
+  // Fetch engines for a generation
+  const fetchLocalEngines = async (generationId: string) => {
     setLoadingEngines(true)
     try {
       const res = await fetch(`/api/generations/${generationId}/engines`)
       if (res.ok) {
         const data = await res.json()
-        setEngines(data.engines)
+        setLocalEngines(data.engines || [])
       }
     } catch {
-      // Ignore
+      // ignore
     } finally {
       setLoadingEngines(false)
     }
   }
 
-  const handleSelectMake = (make: Make) => {
+  // Fetch NHTSA makes (fallback)
+  const fetchNHTSAMakes = async () => {
+    setLoadingMakes(true)
+    try {
+      const res = await fetch('/api/nhtsa/makes')
+      if (res.ok) {
+        const data = await res.json()
+        setNhtsaMakes(data.makes || [])
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingMakes(false)
+    }
+  }
+
+  // Fetch NHTSA models for make+year (fallback)
+  const fetchNHTSAModels = async (makeName: string, year: number) => {
+    setLoadingModels(true)
+    try {
+      const res = await fetch(`/api/nhtsa/models?make=${encodeURIComponent(makeName)}&year=${year}`)
+      if (res.ok) {
+        const data = await res.json()
+        setNhtsaModels(data.models || [])
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingModels(false)
+    }
+  }
+
+  // Decode VIN
+  const handleVinDecode = async () => {
+    if (!vin || vin.length !== 17) {
+      setVinError('VIN must be exactly 17 characters')
+      return
+    }
+
+    setVinLoading(true)
+    setVinError('')
+
+    try {
+      const res = await fetch(`/api/nhtsa/vin?vin=${encodeURIComponent(vin)}`)
+      const data = await res.json()
+
+      if (!res.ok || !data.valid) {
+        setVinError(data.error || 'Invalid VIN')
+        return
+      }
+
+      setVinData(data.decoded)
+
+      // Auto-fill form fields
+      if (data.decoded.year) setSelectedYear(data.decoded.year)
+      if (data.decoded.make) setSelectedMake({ name: data.decoded.make, id: 0 })
+      if (data.decoded.model) setSelectedModel({ name: data.decoded.model, id: 0 })
+      if (data.decoded.horsepower) setHorsepower(String(data.decoded.horsepower))
+      if (data.decoded.displacement) setEngine(data.decoded.displacement)
+      if (data.decoded.fuelType) setFuelType(mapNHTSAFuelType(data.decoded.fuelType))
+      if (data.decoded.transmission) setTransmission(mapNHTSATransmission(data.decoded.transmission))
+      if (data.decoded.drivetrain) setDrivetrain(mapNHTSADrivetrain(data.decoded.drivetrain))
+
+      // Skip to details
+      setStep('details')
+    } catch {
+      setVinError('Failed to decode VIN')
+    } finally {
+      setVinLoading(false)
+    }
+  }
+
+  // Map NHTSA values to our form values
+  const mapNHTSAFuelType = (nhtsa: string): string => {
+    const lower = nhtsa.toLowerCase()
+    if (lower.includes('gasoline') || lower.includes('petrol')) return 'petrol'
+    if (lower.includes('diesel')) return 'diesel'
+    if (lower.includes('electric')) return 'electric'
+    if (lower.includes('hybrid')) return 'hybrid'
+    if (lower.includes('lpg') || lower.includes('propane')) return 'lpg'
+    return ''
+  }
+
+  const mapNHTSATransmission = (nhtsa: string): string => {
+    const lower = nhtsa.toLowerCase()
+    if (lower.includes('manual')) return 'manual'
+    if (lower.includes('automatic')) return 'automatic'
+    if (lower.includes('cvt')) return 'cvt'
+    if (lower.includes('dual') || lower.includes('dct') || lower.includes('dsg')) return 'dct'
+    return ''
+  }
+
+  const mapNHTSADrivetrain = (nhtsa: string): string => {
+    const lower = nhtsa.toLowerCase()
+    if (lower.includes('front') || lower === 'fwd') return 'fwd'
+    if (lower.includes('rear') || lower === 'rwd') return 'rwd'
+    if (lower.includes('all') || lower === 'awd') return 'awd'
+    if (lower.includes('4x4') || lower.includes('4wd') || lower === '4wd') return '4wd'
+    return ''
+  }
+
+  const handleSelectYear = (year: number) => {
+    setSelectedYear(year)
+    setSelectedMake(null)
+    setSelectedModel(null)
+    setSelectedGeneration(null)
+    setSelectedEngine(null)
+    setLocalModels([])
+    setLocalGenerations([])
+    setLocalEngines([])
+    setNhtsaModels([])
+    setStep('make')
+  }
+
+  const handleSelectMake = (make: { name: string; id: string | number }, source: DataSource) => {
     setSelectedMake(make)
     setSelectedModel(null)
     setSelectedGeneration(null)
     setSelectedEngine(null)
+    setLocalGenerations([])
+    setLocalEngines([])
+    setDataSource(source)
+
+    if (source === 'local' && typeof make.id === 'string') {
+      fetchLocalModels(make.id)
+    } else if (source === 'nhtsa' && selectedYear) {
+      fetchNHTSAModels(make.name, selectedYear)
+    }
     setStep('model')
-    fetchModels(make.id)
   }
 
-  const handleSelectModel = (model: Model) => {
+  const handleSelectModel = (model: { name: string; id: string | number }) => {
     setSelectedModel(model)
     setSelectedGeneration(null)
     setSelectedEngine(null)
-    fetchGenerations(model.id)
-    setStep('generation')
+    setLocalEngines([])
+
+    // If using local database and model has a string ID, check for generations
+    if (dataSource === 'local' && typeof model.id === 'string') {
+      fetchLocalGenerations(model.id)
+      setStep('generation')
+    } else {
+      // NHTSA flow goes straight to details
+      setStep('details')
+    }
   }
 
-  const handleSelectGeneration = (generation: Generation) => {
+  const handleSelectGeneration = (generation: LocalGeneration) => {
     setSelectedGeneration(generation)
     setSelectedEngine(null)
-    // Set default year to most recent in range
-    const defaultYear = generation.endYear || generation.startYear
-    setYear(String(defaultYear))
-    fetchEngines(generation.id)
+    fetchLocalEngines(generation.id)
     setStep('engine')
   }
 
-  const handleSelectEngine = (engineConfig: EngineConfig) => {
-    setSelectedEngine(engineConfig)
-    setUseCustomEngine(false)
-    // Auto-fill specs from engine config
-    setEngine(engineConfig.name)
-    setFuelType(engineConfig.fuelType || '')
-    setHorsepower(engineConfig.horsepower?.toString() || '')
-    setTorque(engineConfig.torque?.toString() || '')
-    setTransmission(engineConfig.transmission || '')
-    setDrivetrain(engineConfig.drivetrain || '')
+  const handleSelectEngine = (engine: LocalEngine | null) => {
+    setSelectedEngine(engine)
+
+    // Auto-fill form fields from engine
+    if (engine) {
+      if (engine.horsepower) setHorsepower(String(engine.horsepower))
+      if (engine.torque) setTorque(String(engine.torque))
+      if (engine.displacement) setEngine(engine.displacement)
+      if (engine.transmission) setTransmission(mapTransmission(engine.transmission))
+      if (engine.drivetrain) setDrivetrain(mapDrivetrain(engine.drivetrain))
+      if (engine.fuelType) setFuelType(mapFuelType(engine.fuelType))
+    }
+
     setStep('details')
   }
 
-  const handleCustomEngine = () => {
+  const handleSkipGeneration = () => {
+    setSelectedGeneration(null)
     setSelectedEngine(null)
-    setUseCustomEngine(true)
-    // Clear engine-related fields
-    setEngine('')
-    setFuelType('')
-    setHorsepower('')
-    setTorque('')
-    setTransmission('')
-    setDrivetrain('')
     setStep('details')
+  }
+
+  const handleSkipEngine = () => {
+    setSelectedEngine(null)
+    setStep('details')
+  }
+
+  // Map database values to form values
+  const mapTransmission = (val: string): string => {
+    const lower = val.toLowerCase()
+    if (lower.includes('manual') || lower.includes('mt')) return 'manual'
+    if (lower.includes('automatic') || lower.includes('at')) return 'automatic'
+    if (lower.includes('cvt')) return 'cvt'
+    if (lower.includes('dct') || lower.includes('dsg') || lower.includes('dual')) return 'dct'
+    return ''
+  }
+
+  const mapDrivetrain = (val: string): string => {
+    const lower = val.toLowerCase()
+    if (lower.includes('front') || lower === 'fwd' || lower === 'ff') return 'fwd'
+    if (lower.includes('rear') || lower === 'rwd' || lower === 'fr') return 'rwd'
+    if (lower.includes('all') || lower === 'awd' || lower.includes('quattro')) return 'awd'
+    if (lower.includes('4x4') || lower.includes('4wd')) return '4wd'
+    return ''
+  }
+
+  const mapFuelType = (val: string): string => {
+    const lower = val.toLowerCase()
+    if (lower.includes('petrol') || lower.includes('gasoline')) return 'petrol'
+    if (lower.includes('diesel')) return 'diesel'
+    if (lower.includes('electric')) return 'electric'
+    if (lower.includes('hybrid')) return 'hybrid'
+    if (lower.includes('lpg')) return 'lpg'
+    return ''
+  }
+
+  const handleManualEntry = () => {
+    setStep('year')
+  }
+
+  const switchToNHTSA = () => {
+    setDataSource('nhtsa')
+    if (nhtsaMakes.length === 0) {
+      fetchNHTSAMakes()
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedGeneration || !year) {
-      setError(t.errors.selectYear)
+    if (!selectedYear || !selectedMake || !selectedModel) {
+      setError('Please select year, make, and model')
       return
     }
 
@@ -234,20 +444,24 @@ export default function AddCarPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          generationId: selectedGeneration.id,
+          year: selectedYear,
+          make: selectedMake.name,
+          model: selectedModel.name,
+          // Include generation and engine if selected from local database
+          generationId: selectedGeneration?.id || undefined,
           engineConfigId: selectedEngine?.id || undefined,
-          year: parseInt(year, 10),
           nickname: nickname || undefined,
           engine: engine || undefined,
           transmission: transmission || undefined,
           drivetrain: drivetrain || undefined,
           fuelType: fuelType || undefined,
-          horsepower: horsepower || undefined,
-          torque: torque || undefined,
+          horsepower: horsepower ? parseInt(horsepower, 10) : undefined,
+          torque: torque ? parseInt(torque, 10) : undefined,
           color: color || undefined,
-          mileage: mileage || undefined,
-          images, // Pass the gallery
-          thumbnail: images.length > 0 ? images[0] : undefined, // Auto-set thumbnail
+          mileage: mileage ? parseInt(mileage, 10) : undefined,
+          vin: vin || undefined,
+          images,
+          thumbnail: images.length > 0 ? images[0] : undefined,
         }),
       })
 
@@ -264,32 +478,52 @@ export default function AddCarPage() {
     }
   }
 
-  // Generate year options based on selected generation
-  const minYear = selectedGeneration?.startYear || 1950
-  const maxYear = selectedGeneration?.endYear || new Date().getFullYear() + 1
-  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
+  // Generate year options (1950 to next year)
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: currentYear - 1950 + 2 }, (_, i) => currentYear + 1 - i)
 
-  // Filter makes by search
-  const filteredMakes = makes.filter((make) =>
+  // Filter local makes by search
+  const filteredLocalMakes = localMakes.filter((make) =>
     make.name.toLowerCase().includes(makeSearch.toLowerCase())
   )
-  const popularMakes = filteredMakes.filter((m) => m.isPopular)
-  const otherMakes = filteredMakes.filter((m) => !m.isPopular)
 
-  // Group engines by fuel type
-  const petrolEngines = engines.filter(e => e.fuelType === 'petrol')
-  const dieselEngines = engines.filter(e => e.fuelType === 'diesel')
-  const otherEngines = engines.filter(e => !['petrol', 'diesel'].includes(e.fuelType))
+  // Filter NHTSA makes by search
+  const filteredNHTSAMakes = nhtsaMakes.filter((make) =>
+    make.name.toLowerCase().includes(makeSearch.toLowerCase())
+  )
+
+  // Filter local models by search
+  const filteredLocalModels = localModels.filter((model) =>
+    model.name.toLowerCase().includes(modelSearch.toLowerCase())
+  )
+
+  // Filter NHTSA models by search
+  const filteredNHTSAModels = nhtsaModels.filter((model) =>
+    model.name.toLowerCase().includes(modelSearch.toLowerCase())
+  )
 
   const goBack = () => {
     if (step === 'details') {
-      setStep('engine')
+      if (vinData) {
+        setStep('start')
+        setVinData(null)
+      } else if (selectedEngine || (selectedGeneration && localEngines.length > 0)) {
+        setStep('engine')
+      } else if (selectedGeneration || (dataSource === 'local' && localGenerations.length > 0)) {
+        setStep('generation')
+      } else {
+        setStep('model')
+      }
     } else if (step === 'engine') {
       setStep('generation')
     } else if (step === 'generation') {
       setStep('model')
     } else if (step === 'model') {
       setStep('make')
+    } else if (step === 'make') {
+      setStep('year')
+    } else if (step === 'year') {
+      setStep('start')
     }
   }
 
@@ -320,48 +554,66 @@ export default function AddCarPage() {
         </div>
 
         {/* Progress indicator */}
-        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
-          {(['make', 'model', 'generation', 'engine', 'details'] as Step[]).map((s, i) => {
-            const labels = { make: 'Make', model: 'Model', generation: 'Generation', engine: 'Engine', details: 'Details' }
-            const isCompleted =
-              (s === 'make' && selectedMake) ||
-              (s === 'model' && selectedModel) ||
-              (s === 'generation' && selectedGeneration) ||
-              (s === 'engine' && (selectedEngine || useCustomEngine))
-            const isCurrent = step === s
+        {step !== 'start' && (
+          <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+            {(() => {
+              // Determine which steps to show based on data source
+              const showGeneration = dataSource === 'local' && (step === 'generation' || step === 'engine' || selectedGeneration || localGenerations.length > 0)
+              const showEngine = dataSource === 'local' && (step === 'engine' || selectedEngine || localEngines.length > 0)
 
-            return (
-              <div key={s} className="flex items-center gap-2">
-                <div
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${isCurrent ? 'bg-orange-500 text-white' : isCompleted ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-800 text-zinc-500'
-                    }`}
-                >
-                  {isCompleted && !isCurrent ? <Check className="w-4 h-4" /> : i + 1}
-                  <span>{labels[s]}</span>
-                </div>
-                {i < 4 && <div className="w-4 sm:w-8 h-px bg-zinc-700 flex-shrink-0" />}
-              </div>
-            )
-          })}
-        </div>
+              const steps: { id: Step; label: string }[] = [
+                { id: 'year', label: 'Year' },
+                { id: 'make', label: 'Make' },
+                { id: 'model', label: 'Model' },
+              ]
+
+              if (showGeneration) steps.push({ id: 'generation', label: 'Generation' })
+              if (showEngine) steps.push({ id: 'engine', label: 'Engine' })
+              steps.push({ id: 'details', label: 'Details' })
+
+              return steps.map((s, i) => {
+                const isCompleted =
+                  (s.id === 'year' && selectedYear) ||
+                  (s.id === 'make' && selectedMake) ||
+                  (s.id === 'model' && selectedModel) ||
+                  (s.id === 'generation' && selectedGeneration) ||
+                  (s.id === 'engine' && selectedEngine)
+                const isCurrent = step === s.id
+
+                return (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <div
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${isCurrent ? 'bg-orange-500 text-white' : isCompleted ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-800 text-zinc-500'
+                        }`}
+                    >
+                      {isCompleted && !isCurrent ? <Check className="w-4 h-4" /> : i + 1}
+                      <span>{s.label}</span>
+                    </div>
+                    {i < steps.length - 1 && <div className="w-4 sm:w-8 h-px bg-zinc-700 flex-shrink-0" />}
+                  </div>
+                )
+              })
+            })()}
+          </div>
+        )}
 
         {/* Selected car summary */}
-        {(selectedMake || selectedModel || selectedGeneration) && (
+        {(selectedYear || selectedMake || selectedModel) && step !== 'start' && (
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6 flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center">
               <Car className="w-6 h-6 text-orange-500" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-medium truncate">
-                {selectedMake?.name} {selectedModel?.name} {selectedGeneration?.displayName || selectedGeneration?.name} {year && `(${year})`}
+                {selectedYear} {selectedMake?.name} {selectedModel?.name} {selectedGeneration?.displayName || selectedGeneration?.name || ''}
               </p>
               {selectedEngine && (
                 <p className="text-zinc-400 text-sm truncate">{selectedEngine.name}</p>
               )}
-              {!selectedModel && <p className="text-zinc-500 text-sm">Select a model</p>}
-              {selectedModel && !selectedGeneration && <p className="text-zinc-500 text-sm">Select a generation</p>}
+              {vinData && <p className="text-zinc-500 text-sm">VIN: {vin}</p>}
+              {dataSource === 'nhtsa' && <p className="text-zinc-500 text-xs">via NHTSA</p>}
             </div>
-            {step !== 'make' && (
+            {step !== 'year' && (
               <button
                 onClick={goBack}
                 className="text-sm text-orange-400 hover:text-orange-300 flex-shrink-0"
@@ -372,9 +624,110 @@ export default function AddCarPage() {
           </div>
         )}
 
+        {/* Step: Start - VIN or Manual */}
+        {step === 'start' && (
+          <div className="space-y-8">
+            {/* VIN Decode Section */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-white mb-2">Quick Add with VIN</h2>
+              <p className="text-zinc-400 text-sm mb-4">
+                Enter your Vehicle Identification Number to auto-fill car details
+              </p>
+
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={vin}
+                  onChange={(e) => setVin(e.target.value.toUpperCase())}
+                  placeholder="Enter 17-character VIN"
+                  maxLength={17}
+                  className="flex-1 px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none font-mono tracking-wider"
+                />
+                <Button
+                  onClick={handleVinDecode}
+                  disabled={vinLoading || vin.length !== 17}
+                  className="flex items-center gap-2"
+                >
+                  {vinLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  Decode
+                </Button>
+              </div>
+
+              {vinError && (
+                <p className="text-red-400 text-sm mt-3">{vinError}</p>
+              )}
+
+              <p className="text-zinc-500 text-xs mt-3">
+                VIN is typically found on the driver&apos;s side dashboard or door jamb
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-zinc-800" />
+              <span className="text-zinc-500 text-sm">or</span>
+              <div className="flex-1 h-px bg-zinc-800" />
+            </div>
+
+            {/* Manual Entry */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-white mb-2">Manual Entry</h2>
+              <p className="text-zinc-400 text-sm mb-4">
+                Select your car&apos;s year, make, and model from our database
+              </p>
+
+              <Button onClick={handleManualEntry} variant="secondary" className="w-full">
+                Start Manual Entry
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Select Year */}
+        {step === 'year' && (
+          <div>
+            <h2 className="text-lg font-semibold text-white mb-4">Select Year</h2>
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-96 overflow-y-auto">
+              {years.map((year) => (
+                <button
+                  key={year}
+                  onClick={() => handleSelectYear(year)}
+                  className="p-3 rounded-lg border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-white text-center"
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Step: Select Make */}
         {step === 'make' && (
           <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Select Make</h2>
+              <div className="flex items-center gap-2 text-sm">
+                <button
+                  onClick={() => setDataSource('local')}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${dataSource === 'local' ? 'bg-orange-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+                >
+                  <Database className="w-3 h-3" />
+                  Popular
+                </button>
+                <button
+                  onClick={switchToNHTSA}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${dataSource === 'nhtsa' ? 'bg-orange-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+                >
+                  <Globe className="w-3 h-3" />
+                  All Makes
+                </button>
+              </div>
+            </div>
+
             <input
               type="text"
               placeholder="Search makes..."
@@ -383,46 +736,52 @@ export default function AddCarPage() {
               className="w-full px-4 py-3 mb-6 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
             />
 
-            {loadingMakes ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            {dataSource === 'local' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+                {filteredLocalMakes.map((make) => (
+                  <button
+                    key={make.id}
+                    onClick={() => handleSelectMake({ name: make.name, id: make.id }, 'local')}
+                    className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left flex items-center gap-3"
+                  >
+                    {make.logo && (
+                      <div className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center">
+                        <Car className="w-4 h-4 text-zinc-500" />
+                      </div>
+                    )}
+                    <p className="text-white text-sm font-medium truncate">{make.name}</p>
+                  </button>
+                ))}
               </div>
             ) : (
               <>
-                {popularMakes.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-sm font-medium text-zinc-500 mb-3">Popular Makes</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {popularMakes.map((make) => (
-                        <button
-                          key={make.id}
-                          onClick={() => handleSelectMake(make)}
-                          className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                        >
-                          <p className="text-white font-medium">{make.name}</p>
-                        </button>
-                      ))}
-                    </div>
+                {loadingMakes ? (
+                  <div className="flex justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                   </div>
-                )}
-
-                {otherMakes.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-zinc-500 mb-3">All Makes</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {otherMakes.map((make) => (
-                        <button
-                          key={make.id}
-                          onClick={() => handleSelectMake(make)}
-                          className="p-3 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                        >
-                          <p className="text-white text-sm">{make.name}</p>
-                        </button>
-                      ))}
-                    </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+                    {filteredNHTSAMakes.slice(0, 200).map((make) => (
+                      <button
+                        key={make.id}
+                        onClick={() => handleSelectMake({ name: make.name, id: make.id }, 'nhtsa')}
+                        className="p-3 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
+                      >
+                        <p className="text-white text-sm truncate">{make.name}</p>
+                      </button>
+                    ))}
                   </div>
                 )}
               </>
+            )}
+
+            {dataSource === 'local' && filteredLocalMakes.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-zinc-400 mb-2">No makes found matching &quot;{makeSearch}&quot;</p>
+                <button onClick={switchToNHTSA} className="text-orange-400 hover:text-orange-300 text-sm underline">
+                  Search all makes via NHTSA
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -430,30 +789,100 @@ export default function AddCarPage() {
         {/* Step: Select Model */}
         {step === 'model' && (
           <div>
+            <h2 className="text-lg font-semibold text-white mb-4">Select Model</h2>
+
+            <input
+              type="text"
+              placeholder="Search models..."
+              value={modelSearch}
+              onChange={(e) => setModelSearch(e.target.value)}
+              className="w-full px-4 py-3 mb-6 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+            />
+
             {loadingModels ? (
               <div className="flex justify-center py-12">
                 <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : models.length === 0 ? (
+            ) : dataSource === 'local' && filteredLocalModels.length === 0 && filteredNHTSAModels.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-zinc-400">No models found for {selectedMake?.name}</p>
+                <p className="text-zinc-400 mb-4">No models found for {selectedMake?.name}</p>
+                <p className="text-zinc-500 text-sm mb-4">You can enter the model name manually or search NHTSA.</p>
+                <div className="max-w-sm mx-auto space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Enter model name"
+                    value={modelSearch}
+                    onChange={(e) => setModelSearch(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+                  />
+                  {modelSearch && (
+                    <Button
+                      onClick={() => handleSelectModel({ name: modelSearch, id: 0 })}
+                      className="w-full"
+                    >
+                      Use &quot;{modelSearch}&quot;
+                    </Button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (selectedYear && selectedMake) {
+                        setDataSource('nhtsa')
+                        fetchNHTSAModels(selectedMake.name, selectedYear)
+                      }
+                    }}
+                    className="text-orange-400 hover:text-orange-300 text-sm underline"
+                  >
+                    Search models via NHTSA
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {models.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => handleSelectModel(model)}
-                    className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                  >
-                    <p className="text-white font-medium">{model.name}</p>
-                    {model._count && model._count.generations > 0 && (
-                      <p className="text-zinc-500 text-sm mt-1">
-                        {model._count.generations} generation{model._count.generations > 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </button>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                {dataSource === 'local' ? (
+                  filteredLocalModels.map((model) => (
+                    <button
+                      key={model.id}
+                      onClick={() => handleSelectModel({ name: model.name, id: model.id })}
+                      className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
+                    >
+                      <p className="text-white font-medium">{model.name}</p>
+                    </button>
+                  ))
+                ) : (
+                  filteredNHTSAModels.map((model) => (
+                    <button
+                      key={model.id}
+                      onClick={() => handleSelectModel({ name: model.name, id: model.id })}
+                      className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
+                    >
+                      <p className="text-white font-medium">{model.name}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Manual entry fallback */}
+            {((dataSource === 'local' && filteredLocalModels.length > 0) || (dataSource === 'nhtsa' && filteredNHTSAModels.length > 0)) && (
+              <div className="mt-6 pt-6 border-t border-zinc-800">
+                <p className="text-zinc-500 text-sm mb-3">Can&apos;t find your model?</p>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="Enter model name manually"
+                    value={modelSearch}
+                    onChange={(e) => setModelSearch(e.target.value)}
+                    className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none text-sm"
+                  />
+                  {modelSearch && (
+                    <Button
+                      onClick={() => handleSelectModel({ name: modelSearch, id: 0 })}
+                      size="sm"
+                    >
+                      Use This
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -462,36 +891,83 @@ export default function AddCarPage() {
         {/* Step: Select Generation */}
         {step === 'generation' && (
           <div>
+            <h2 className="text-lg font-semibold text-white mb-4">Select Generation</h2>
+            <p className="text-zinc-400 text-sm mb-6">
+              Choose your car&apos;s generation to get accurate stock specifications
+            </p>
+
             {loadingGenerations ? (
               <div className="flex justify-center py-12">
                 <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : generations.length === 0 ? (
+            ) : localGenerations.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-zinc-400 mb-4">No generations found for {selectedModel?.name}</p>
-                <p className="text-zinc-500 text-sm">This model doesn&apos;t have generation data yet. Please check back later or contact support to add your car.</p>
+                <p className="text-zinc-500 text-sm mb-4">You can continue without selecting a generation.</p>
+                <Button onClick={handleSkipGeneration} variant="secondary">
+                  Skip - Enter Details Manually
+                </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {generations.map((gen) => (
-                  <button
-                    key={gen.id}
-                    onClick={() => handleSelectGeneration(gen)}
-                    className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                  >
-                    <p className="text-white font-medium">{gen.displayName || gen.name}</p>
-                    <div className="flex items-center gap-3 mt-2 text-sm text-zinc-500">
-                      <span>{gen.startYear} - {gen.endYear || 'present'}</span>
-                      {gen.bodyType && <span className="capitalize">{gen.bodyType}</span>}
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                  {localGenerations
+                    .filter(gen => {
+                      // Filter generations that match the selected year
+                      if (!selectedYear) return true
+                      return selectedYear >= gen.startYear && (!gen.endYear || selectedYear <= gen.endYear)
+                    })
+                    .map((gen) => (
+                      <button
+                        key={gen.id}
+                        onClick={() => handleSelectGeneration(gen)}
+                        className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
+                      >
+                        <p className="text-white font-medium">{gen.displayName || gen.name}</p>
+                        <p className="text-zinc-500 text-sm mt-1">
+                          {gen.startYear} - {gen.endYear || 'Present'}
+                        </p>
+                        {gen._count && gen._count.engines > 0 && (
+                          <p className="text-orange-400 text-xs mt-1">
+                            {gen._count.engines} engine{gen._count.engines !== 1 ? 's' : ''} available
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                </div>
+
+                {/* Show all generations if none match the year */}
+                {selectedYear && localGenerations.filter(gen => selectedYear >= gen.startYear && (!gen.endYear || selectedYear <= gen.endYear)).length === 0 && (
+                  <div className="mb-6">
+                    <p className="text-zinc-400 text-sm mb-4">
+                      No generations match {selectedYear}. Showing all generations:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {localGenerations.map((gen) => (
+                        <button
+                          key={gen.id}
+                          onClick={() => handleSelectGeneration(gen)}
+                          className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
+                        >
+                          <p className="text-white font-medium">{gen.displayName || gen.name}</p>
+                          <p className="text-zinc-500 text-sm mt-1">
+                            {gen.startYear} - {gen.endYear || 'Present'}
+                          </p>
+                        </button>
+                      ))}
                     </div>
-                    {gen._count && gen._count.engines > 0 && (
-                      <p className="text-orange-400/70 text-sm mt-2">
-                        {gen._count.engines} engine option{gen._count.engines > 1 ? 's' : ''}
-                      </p>
-                    )}
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-zinc-800">
+                  <button
+                    onClick={handleSkipGeneration}
+                    className="text-zinc-400 hover:text-white text-sm"
+                  >
+                    Skip - I&apos;ll enter details manually
                   </button>
-                ))}
-              </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -499,99 +975,64 @@ export default function AddCarPage() {
         {/* Step: Select Engine */}
         {step === 'engine' && (
           <div>
+            <h2 className="text-lg font-semibold text-white mb-4">Select Engine</h2>
+            <p className="text-zinc-400 text-sm mb-6">
+              Choose your engine configuration to auto-fill power specifications
+            </p>
+
             {loadingEngines ? (
               <div className="flex justify-center py-12">
                 <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
               </div>
+            ) : localEngines.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-zinc-400 mb-4">No engine configurations found</p>
+                <p className="text-zinc-500 text-sm mb-4">You can continue and enter specifications manually.</p>
+                <Button onClick={handleSkipEngine} variant="secondary">
+                  Continue - Enter Specs Manually
+                </Button>
+              </div>
             ) : (
-              <div className="space-y-6">
-                {/* Petrol engines */}
-                {petrolEngines.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-zinc-500 mb-3">Petrol / Gasoline</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {petrolEngines.map((eng) => (
-                        <button
-                          key={eng.id}
-                          onClick={() => handleSelectEngine(eng)}
-                          className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                        >
-                          <p className="text-white font-medium">{eng.name}</p>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-zinc-500">
-                            {eng.horsepower && <span>{eng.horsepower} HP</span>}
-                            {eng.torque && <span>{eng.torque} Nm</span>}
-                            {eng.transmission && <span className="capitalize">{eng.transmission}</span>}
-                            {eng.drivetrain && <span className="uppercase">{eng.drivetrain}</span>}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <>
+                <div className="grid grid-cols-1 gap-3 mb-6">
+                  {localEngines.map((eng) => (
+                    <button
+                      key={eng.id}
+                      onClick={() => handleSelectEngine(eng)}
+                      className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
+                    >
+                      <p className="text-white font-medium">{eng.name}</p>
+                      <div className="flex flex-wrap gap-4 mt-2">
+                        {eng.horsepower && (
+                          <span className="text-zinc-400 text-sm">
+                            <span className="text-orange-400 font-semibold">{eng.horsepower}</span> HP
+                          </span>
+                        )}
+                        {eng.torque && (
+                          <span className="text-zinc-400 text-sm">
+                            <span className="text-orange-400 font-semibold">{eng.torque}</span> Nm
+                          </span>
+                        )}
+                        {eng.fuelType && (
+                          <span className="text-zinc-500 text-sm capitalize">{eng.fuelType}</span>
+                        )}
+                        {eng.transmission && (
+                          <span className="text-zinc-500 text-sm">{eng.transmission}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
 
-                {/* Diesel engines */}
-                {dieselEngines.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-zinc-500 mb-3">Diesel</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {dieselEngines.map((eng) => (
-                        <button
-                          key={eng.id}
-                          onClick={() => handleSelectEngine(eng)}
-                          className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                        >
-                          <p className="text-white font-medium">{eng.name}</p>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-zinc-500">
-                            {eng.horsepower && <span>{eng.horsepower} HP</span>}
-                            {eng.torque && <span>{eng.torque} Nm</span>}
-                            {eng.transmission && <span className="capitalize">{eng.transmission}</span>}
-                            {eng.drivetrain && <span className="uppercase">{eng.drivetrain}</span>}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Other engines (electric, hybrid, etc.) */}
-                {otherEngines.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-zinc-500 mb-3">Electric / Hybrid / Other</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {otherEngines.map((eng) => (
-                        <button
-                          key={eng.id}
-                          onClick={() => handleSelectEngine(eng)}
-                          className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-orange-500 hover:bg-zinc-800 transition-colors text-left"
-                        >
-                          <p className="text-white font-medium">{eng.name}</p>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-zinc-500">
-                            <span className="capitalize">{eng.fuelType}</span>
-                            {eng.horsepower && <span>{eng.horsepower} HP</span>}
-                            {eng.torque && <span>{eng.torque} Nm</span>}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Custom engine option */}
-                <div className="border-t border-zinc-800 pt-6">
+                <div className="pt-4 border-t border-zinc-800">
                   <button
-                    onClick={handleCustomEngine}
-                    className="w-full p-4 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 hover:border-orange-500 hover:bg-zinc-800/50 transition-colors text-left flex items-center gap-4"
+                    onClick={handleSkipEngine}
+                    className="text-zinc-400 hover:text-white text-sm"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
-                      <Settings className="w-5 h-5 text-zinc-400" />
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">Custom / Other Engine</p>
-                      <p className="text-zinc-500 text-sm">Enter engine specs manually</p>
-                    </div>
+                    Skip - I&apos;ll enter specs manually
                   </button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
@@ -599,23 +1040,23 @@ export default function AddCarPage() {
         {/* Step: Details */}
         {step === 'details' && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Year */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">{t.year} *</label>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white focus:border-orange-500 focus:outline-none"
-              >
-                <option value="">Select year</option>
-                {years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* VIN auto-fill notice */}
+            {vinData && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
+                <p className="text-green-400 text-sm">
+                  Fields auto-filled from VIN. You can modify any values below.
+                </p>
+              </div>
+            )}
+
+            {/* Engine selection notice */}
+            {selectedEngine && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                <p className="text-blue-400 text-sm">
+                  Stock specifications filled from {selectedEngine.name}. You can modify values if your car is tuned.
+                </p>
+              </div>
+            )}
 
             {/* Nickname */}
             <div>
@@ -628,14 +1069,6 @@ export default function AddCarPage() {
                 className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800/50 text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
               />
             </div>
-
-            {/* Engine specs header */}
-            {selectedEngine && (
-              <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-4">
-                <p className="text-zinc-400 text-sm">Pre-filled from: <span className="text-white">{selectedEngine.name}</span></p>
-                <p className="text-zinc-500 text-xs mt-1">You can modify any values below</p>
-              </div>
-            )}
 
             {/* Two columns for specs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -61,8 +61,13 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const {
+      // New API-based fields (NHTSA)
+      make,
+      model,
+      // Legacy generation-based fields
       generationId,
       engineConfigId,
+      // Common fields
       year,
       nickname,
       description,
@@ -80,12 +85,13 @@ export async function POST(req: Request) {
       color,
       purchaseDate,
       isPublic = true,
+      vin,
     } = body
 
-    // Validate required fields
-    if (!generationId || !year) {
+    // Validate required fields - either (make+model+year) or (generationId+year)
+    if ((!make || !model || !year) && (!generationId || !year)) {
       return NextResponse.json(
-        { error: 'missing_fields', message: 'Generation and year are required' },
+        { error: 'missing_fields', message: 'Make, model, and year are required' },
         { status: 400 }
       )
     }
@@ -99,28 +105,8 @@ export async function POST(req: Request) {
       )
     }
 
-    // Check if generation exists
-    const generation = await prisma.carGeneration.findUnique({
-      where: { id: generationId },
-      include: { model: { include: { make: true } } },
-    })
-
-    if (!generation) {
-      return NextResponse.json(
-        { error: 'generation_not_found', message: 'Car generation not found' },
-        { status: 404 }
-      )
-    }
-
-    // Validate year is within generation range
-    if (year < generation.startYear || (generation.endYear && year > generation.endYear)) {
-      return NextResponse.json(
-        { error: 'year_out_of_range', message: `Year must be between ${generation.startYear} and ${generation.endYear || 'present'}` },
-        { status: 400 }
-      )
-    }
-
-    // If engineConfigId provided, fetch engine specs
+    // If using legacy generationId approach
+    let validatedGenerationId = null
     let engineSpecs: {
       engine?: string
       transmission?: string
@@ -130,19 +116,45 @@ export async function POST(req: Request) {
       torque?: number
     } = {}
 
-    if (engineConfigId) {
-      const engineConfig = await prisma.engineConfig.findUnique({
-        where: { id: engineConfigId },
+    if (generationId) {
+      // Check if generation exists
+      const generation = await prisma.carGeneration.findUnique({
+        where: { id: generationId },
+        include: { model: { include: { make: true } } },
       })
 
-      if (engineConfig && engineConfig.generationId === generationId) {
-        engineSpecs = {
-          engine: engineConfig.name,
-          transmission: engineConfig.transmission || undefined,
-          drivetrain: engineConfig.drivetrain || undefined,
-          fuelType: engineConfig.fuelType,
-          horsepower: engineConfig.horsepower || undefined,
-          torque: engineConfig.torque || undefined,
+      if (!generation) {
+        return NextResponse.json(
+          { error: 'generation_not_found', message: 'Car generation not found' },
+          { status: 404 }
+        )
+      }
+
+      // Validate year is within generation range
+      if (year < generation.startYear || (generation.endYear && year > generation.endYear)) {
+        return NextResponse.json(
+          { error: 'year_out_of_range', message: `Year must be between ${generation.startYear} and ${generation.endYear || 'present'}` },
+          { status: 400 }
+        )
+      }
+
+      validatedGenerationId = generationId
+
+      // If engineConfigId provided, fetch engine specs
+      if (engineConfigId) {
+        const engineConfig = await prisma.engineConfig.findUnique({
+          where: { id: engineConfigId },
+        })
+
+        if (engineConfig && engineConfig.generationId === generationId) {
+          engineSpecs = {
+            engine: engineConfig.name,
+            transmission: engineConfig.transmission || undefined,
+            drivetrain: engineConfig.drivetrain || undefined,
+            fuelType: engineConfig.fuelType,
+            horsepower: engineConfig.horsepower || undefined,
+            torque: engineConfig.torque || undefined,
+          }
         }
       }
     }
@@ -154,24 +166,30 @@ export async function POST(req: Request) {
     const car = await prisma.car.create({
       data: {
         ownerId: user.id,
-        generationId,
+        // New API-based fields
+        make: make || null,
+        model: model || null,
+        // Legacy fields
+        generationId: validatedGenerationId,
         engineConfigId: engineConfigId || null,
+        // Common fields
         year,
         nickname: nickname || null,
         description: description || null,
         image: primaryImage,
         images: images || [],
         thumbnail: thumbnail || primaryImage,
-        mileage: mileage ? parseInt(mileage, 10) : null,
+        mileage: mileage ? parseInt(String(mileage), 10) : null,
         engine: engine || engineSpecs.engine || null,
         transmission: transmission || engineSpecs.transmission || null,
         drivetrain: drivetrain || engineSpecs.drivetrain || null,
         fuelType: fuelType || engineSpecs.fuelType || null,
-        horsepower: horsepower ? parseInt(horsepower, 10) : (engineSpecs.horsepower || null),
-        torque: torque ? parseInt(torque, 10) : (engineSpecs.torque || null),
+        horsepower: horsepower ? parseInt(String(horsepower), 10) : (engineSpecs.horsepower || null),
+        torque: torque ? parseInt(String(torque), 10) : (engineSpecs.torque || null),
         color: color || null,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         isPublic,
+        vin: vin || null,
       },
       include: {
         generation: {

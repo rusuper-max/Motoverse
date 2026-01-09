@@ -126,9 +126,11 @@ export default function SubmitPerformancePage() {
     }
 
     useEffect(() => {
-        fetchCar()
-        fetchTracks()
-    }, [carId])
+        if (!authLoading) {
+            fetchCar()
+            fetchTracks()
+        }
+    }, [carId, authLoading, user?.id])
 
     const fetchCar = async () => {
         try {
@@ -136,9 +138,9 @@ export default function SubmitPerformancePage() {
             if (res.ok) {
                 const data = await res.json()
                 setCar(data.car)
-                // Verify ownership
-                if (data.car.ownerId !== user?.id) {
-                    router.push(`/${locale}/garage`)
+                // Verify ownership - only redirect if we know the user
+                if (user && data.car.ownerId !== user.id) {
+                    router.push(`/${locale}/garage/${carId}`)
                 }
             } else {
                 router.push(`/${locale}/garage`)

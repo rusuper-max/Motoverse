@@ -46,7 +46,7 @@ export default function LoginPage() {
       }
 
       // Sign in directly with client-side Supabase
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -57,9 +57,25 @@ export default function LoginPage() {
         return
       }
 
-      // Auth state change will be picked up by useAuth hook automatically via onAuthStateChange
-      // Redirect to home
-      router.push(`/${locale}`)
+      // Ensure session is set before redirecting
+      if (data.session) {
+        // Wait for Supabase to confirm session is stored in cookies
+        let retries = 0
+        while (retries < 5) {
+          const { data: sessionCheck } = await supabase.auth.getSession()
+          if (sessionCheck.session) {
+            break
+          }
+          await new Promise(resolve => setTimeout(resolve, 100))
+          retries++
+        }
+
+        // Full page navigation to ensure fresh server state
+        window.location.href = `/${locale}`
+      } else {
+        // Fallback to router if no session (shouldn't happen)
+        router.push(`/${locale}`)
+      }
     } catch {
       setErrorMessage(t.errors.failed)
       setStatus('error')

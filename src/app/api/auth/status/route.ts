@@ -20,6 +20,7 @@ export async function GET(req: Request) {
         role: user.role,
         isVerified: user.isVerified,
         profileCompleted: user.profileCompleted,
+        unitSystem: user.unitSystem,
       } : null,
     },
     { headers: { 'Cache-Control': 'no-store', Vary: 'Cookie' } }

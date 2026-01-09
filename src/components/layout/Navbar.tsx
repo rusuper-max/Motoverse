@@ -12,12 +12,14 @@ import { useAuth } from '@/hooks/useAuth'
 interface GarageCar {
   id: string
   nickname: string | null
-  generation: {
+  make: string | null
+  model: string | null
+  generation?: {
     model: {
       name: string
       make: { name: string }
     }
-  }
+  } | null
 }
 
 interface Notification {
@@ -237,7 +239,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                     key={car.id}
                     href={localePath(`/garage/${car.id}`)}
                     className="relative group"
-                    title={car.nickname || `${car.generation.model.make.name} ${car.generation.model.name}`}
+                    title={car.nickname || `${car.generation?.model.make.name || car.make || ''} ${car.generation?.model.name || car.model || ''}`.trim()}
                   >
                     <div className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors border border-zinc-700/50 group-hover:border-orange-500/50">
                       <Car className="w-4 h-4 text-zinc-400 group-hover:text-orange-400 transition-colors" />

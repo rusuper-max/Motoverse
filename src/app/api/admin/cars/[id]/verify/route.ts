@@ -44,6 +44,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           dynoVerified: verified,
           hpVerifiedAt: verified ? now : null,
           hpVerifiedBy: verified ? user.id : null,
+          // If dyno verified, it's not just "stock" anymore
+          isStockPower: verified ? false : undefined,
         }
         break
 
@@ -63,6 +65,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
         break
 
+      case 'stock':
+        // Mark as stock power (admin-verified factory specs)
+        updateData = {
+          isStockPower: verified,
+          stockMarkedAt: verified ? now : null,
+          stockMarkedBy: verified ? user.id : null,
+          // Clear dyno verification if marking as stock
+          dynoVerified: verified ? false : undefined,
+        }
+        break
+
       default:
         return NextResponse.json({ error: 'Invalid verification type' }, { status: 400 })
     }
@@ -79,6 +92,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         vinVerified: true,
         vinVerifiedAt: true,
         vin: true,
+        isStockPower: true,
+        stockMarkedAt: true,
       }
     })
 
