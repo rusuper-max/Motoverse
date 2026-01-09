@@ -160,6 +160,22 @@ model Car {
   dynoProofUrl     String?
   hpVerifiedAt     DateTime?
   hpVerifiedBy     String?
+
+  // VIN Verification
+  vin              String?
+  vinVerified      Boolean           @default(false)
+  vinVerifiedAt    DateTime?
+  vinVerifiedBy    String?
+  vinProofUrl      String?           // Photo of VIN plate or registration
+
+  // Torque Verification
+  torqueVerified   Boolean           @default(false)
+  torqueVerifiedAt DateTime?
+  torqueVerifiedBy String?
+
+  // Performance Times Verification (0-100, 0-200, 100-200, 402m)
+  // These are stored in PerformanceTime model with status field
+
   engineConfig     EngineConfig?     @relation(fields: [engineConfigId], references: [id])
   generation       CarGeneration?    @relation(fields: [generationId], references: [id])
   owner            User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)

@@ -19,6 +19,12 @@ import {
   UserCog,
   Calendar,
   AlertTriangle,
+  Gauge,
+  Timer,
+  CheckCircle,
+  XCircle,
+  ExternalLink,
+  Hash,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { Locale } from '@/i18n/config'
@@ -62,6 +68,63 @@ interface Stats {
   verified: number
 }
 
+interface PendingPerformance {
+  id: string
+  timeMs: number
+  category: string
+  proofUrl: string | null
+  proofType: string | null
+  createdAt: string
+  car: {
+    id: string
+    nickname: string | null
+    year: number
+    horsepower: number | null
+    generation: {
+      displayName: string | null
+      model: { name: string; make: { name: string } }
+    } | null
+  }
+  user: { id: string; username: string; avatar: string | null }
+  track: { name: string } | null
+}
+
+interface PendingDyno {
+  id: string
+  nickname: string | null
+  year: number
+  horsepower: number | null
+  torque: number | null
+  estimatedHp: number | null
+  estimatedTorque: number | null
+  dynoProofUrl: string | null
+  generation: {
+    displayName: string | null
+    model: { name: string; make: { name: string } }
+  } | null
+  owner: { id: string; username: string; avatar: string | null }
+}
+
+interface PendingVin {
+  id: string
+  nickname: string | null
+  year: number
+  vin: string | null
+  vinProofUrl: string | null
+  generation: {
+    displayName: string | null
+    model: { name: string; make: { name: string } }
+  } | null
+  owner: { id: string; username: string; avatar: string | null }
+}
+
+interface Verifications {
+  pendingPerformance: PendingPerformance[]
+  pendingDyno: PendingDyno[]
+  pendingVin: PendingVin[]
+  counts: { performance: number; dyno: number; vin: number; total: number }
+}
+
 export default function AdminPage() {
   const params = useParams()
   const router = useRouter()
@@ -84,6 +147,10 @@ export default function AdminPage() {
     type: 'user' | 'event'
     message: string
   } | null>(null)
+  const [verifications, setVerifications] = useState<Verifications | null>(null)
+  const [verificationsLoading, setVerificationsLoading] = useState(false)
+  const [activeVerificationTab, setActiveVerificationTab] = useState<'performance' | 'dyno' | 'vin'>('performance')
+  const [verifyingId, setVerifyingId] = useState<string | null>(null)
 
   // Check admin access - founders AND admins can access
   const isAdmin = user?.role === 'founder' || user?.role === 'admin'
@@ -137,13 +204,28 @@ export default function AdminPage() {
     }
   }, [])
 
+  const fetchVerifications = useCallback(async () => {
+    setVerificationsLoading(true)
+    try {
+      const res = await fetch('/api/admin/verifications')
+      if (res.ok) {
+        const data = await res.json()
+        setVerifications(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch verifications:', error)
+    } finally {
+      setVerificationsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!authLoading && authenticated && isAdmin) {
-      Promise.all([fetchStats(), fetchEvents()]).then(() => setLoading(false))
+      Promise.all([fetchStats(), fetchEvents(), fetchVerifications()]).then(() => setLoading(false))
     } else if (!authLoading && (!authenticated || !isAdmin)) {
       router.push(`/${locale}`)
     }
-  }, [authLoading, authenticated, isAdmin, fetchStats, fetchEvents, router, locale])
+  }, [authLoading, authenticated, isAdmin, fetchStats, fetchEvents, fetchVerifications, router, locale])
 
   useEffect(() => {
     if (isAdmin && !loading) {
@@ -194,6 +276,42 @@ export default function AdminPage() {
       type: 'user',
       message: 'Are you sure you want to delete this user? This will remove all their data including cars, posts, and comments. This action cannot be undone.',
     })
+  }
+
+  const handleVerifyPerformance = async (id: string, status: 'approved' | 'rejected') => {
+    setVerifyingId(id)
+    try {
+      const res = await fetch(`/api/admin/performance/${id}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        fetchVerifications()
+      }
+    } catch (error) {
+      console.error('Failed to verify performance:', error)
+    } finally {
+      setVerifyingId(null)
+    }
+  }
+
+  const handleVerifyCar = async (carId: string, type: 'hp' | 'torque' | 'vin', verified: boolean) => {
+    setVerifyingId(carId)
+    try {
+      const res = await fetch(`/api/admin/cars/${carId}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationType: type, verified }),
+      })
+      if (res.ok) {
+        fetchVerifications()
+      }
+    } catch (error) {
+      console.error('Failed to verify car:', error)
+    } finally {
+      setVerifyingId(null)
+    }
   }
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -536,6 +654,248 @@ export default function AdminPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Verifications Section */}
+        <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-zinc-800 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Gauge className="w-5 h-5 text-orange-500" />
+              Pending Verifications
+              {verifications && verifications.counts.total > 0 && (
+                <span className="px-2 py-0.5 text-xs bg-orange-500 text-white rounded-full">
+                  {verifications.counts.total}
+                </span>
+              )}
+            </h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveVerificationTab('performance')}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                  activeVerificationTab === 'performance'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Timer className="w-4 h-4" />
+                Times ({verifications?.counts.performance || 0})
+              </button>
+              <button
+                onClick={() => setActiveVerificationTab('dyno')}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                  activeVerificationTab === 'dyno'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Gauge className="w-4 h-4" />
+                Dyno ({verifications?.counts.dyno || 0})
+              </button>
+              <button
+                onClick={() => setActiveVerificationTab('vin')}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                  activeVerificationTab === 'vin'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Hash className="w-4 h-4" />
+                VIN ({verifications?.counts.vin || 0})
+              </button>
+            </div>
+          </div>
+
+          <div className="divide-y divide-zinc-800">
+            {verificationsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+              </div>
+            ) : activeVerificationTab === 'performance' ? (
+              // Performance Times Tab
+              verifications?.pendingPerformance.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500">No pending performance times</div>
+              ) : (
+                verifications?.pendingPerformance.map((perf) => {
+                  const carName = perf.car.generation
+                    ? `${perf.car.generation.model.make.name} ${perf.car.generation.model.name}`
+                    : perf.car.nickname || 'Unknown Car'
+                  return (
+                    <div key={perf.id} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-800/30">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-white">
+                            {(perf.timeMs / 1000).toFixed(2)}s
+                          </span>
+                          <span className="px-2 py-0.5 text-xs bg-zinc-700 text-zinc-300 rounded">
+                            {perf.category}
+                          </span>
+                        </div>
+                        <div className="text-sm text-zinc-400 mt-1">
+                          {perf.car.year} {carName}
+                          {perf.car.horsepower && ` • ${perf.car.horsepower} HP`}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">
+                          by @{perf.user.username} • {new Date(perf.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {perf.proofUrl && (
+                          <a
+                            href={perf.proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="View proof"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleVerifyPerformance(perf.id, 'approved')}
+                          disabled={verifyingId === perf.id}
+                          className="p-1.5 text-zinc-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Approve"
+                        >
+                          {verifyingId === perf.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleVerifyPerformance(perf.id, 'rejected')}
+                          disabled={verifyingId === perf.id}
+                          className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Reject"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )
+            ) : activeVerificationTab === 'dyno' ? (
+              // Dyno Tab
+              verifications?.pendingDyno.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500">No pending dyno verifications</div>
+              ) : (
+                verifications?.pendingDyno.map((car) => {
+                  const carName = car.generation
+                    ? `${car.generation.model.make.name} ${car.generation.model.name}`
+                    : car.nickname || 'Unknown Car'
+                  return (
+                    <div key={car.id} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-800/30">
+                      <div className="flex-1">
+                        <div className="font-medium text-white">
+                          {car.year} {carName}
+                        </div>
+                        <div className="text-sm text-zinc-400 mt-1">
+                          Claimed: {car.horsepower || car.estimatedHp} HP
+                          {(car.torque || car.estimatedTorque) && ` / ${car.torque || car.estimatedTorque} Nm`}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">
+                          by @{car.owner.username}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {car.dynoProofUrl && (
+                          <a
+                            href={car.dynoProofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="View dyno sheet"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleVerifyCar(car.id, 'hp', true)}
+                          disabled={verifyingId === car.id}
+                          className="p-1.5 text-zinc-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Verify HP"
+                        >
+                          {verifyingId === car.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleVerifyCar(car.id, 'hp', false)}
+                          disabled={verifyingId === car.id}
+                          className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Reject"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )
+            ) : (
+              // VIN Tab
+              verifications?.pendingVin.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500">No pending VIN verifications</div>
+              ) : (
+                verifications?.pendingVin.map((car) => {
+                  const carName = car.generation
+                    ? `${car.generation.model.make.name} ${car.generation.model.name}`
+                    : car.nickname || 'Unknown Car'
+                  return (
+                    <div key={car.id} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-800/30">
+                      <div className="flex-1">
+                        <div className="font-medium text-white">
+                          {car.year} {carName}
+                        </div>
+                        <div className="text-sm text-zinc-400 mt-1 font-mono">
+                          VIN: {car.vin}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">
+                          by @{car.owner.username}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {car.vinProofUrl && (
+                          <a
+                            href={car.vinProofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="View VIN proof"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleVerifyCar(car.id, 'vin', true)}
+                          disabled={verifyingId === car.id}
+                          className="p-1.5 text-zinc-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Verify VIN"
+                        >
+                          {verifyingId === car.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleVerifyCar(car.id, 'vin', false)}
+                          disabled={verifyingId === car.id}
+                          className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Reject"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )
+            )}
           </div>
         </div>
       </div>
