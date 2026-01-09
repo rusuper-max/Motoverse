@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Car, Check, Search, Loader2, Database, Globe } from 'lucide-react'
@@ -72,7 +72,7 @@ interface VINData {
 type Step = 'start' | 'year' | 'make' | 'model' | 'generation' | 'engine' | 'details'
 type DataSource = 'local' | 'nhtsa'
 
-export default function AddCarPage() {
+function AddCarContent() {
   const params = useParams()
   const router = useRouter()
   const locale = params.locale as Locale
@@ -1260,5 +1260,17 @@ export default function AddCarPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AddCarPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <AddCarContent />
+    </Suspense>
   )
 }
