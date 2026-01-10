@@ -3,11 +3,13 @@
 import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Home, Search, PlusCircle, User, Menu, X, LayoutGrid, Globe, LogOut, CalendarDays, Trophy, Bell, Zap, MessageCircle, Camera, Shield } from 'lucide-react'
+import { Car, Home, Search, PlusCircle, User, Menu, X, LayoutGrid, Globe, LogOut, CalendarDays, Trophy, Zap, Camera, Shield, Users, Gamepad2 } from 'lucide-react'
 import Button from '../ui/Button'
 import { Locale, locales, localeNames, localeFlags } from '@/i18n/config'
 import { Dictionary } from '@/i18n'
 import { useAuth } from '@/hooks/useAuth'
+import { CheckEngineIcon, OilPressureIcon } from '@/components/icons/DashboardIcons'
+import { useAnimations } from '@/contexts/AnimationContext'
 
 interface GarageCar {
   id: string
@@ -55,6 +57,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [garageCars, setGarageCars] = useState<GarageCar[]>([])
   const { authenticated, user, loading, logout } = useAuth()
+  const { shouldAnimate } = useAnimations()
 
   const langMenuRef = useRef<HTMLDivElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -165,7 +168,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
               <Car className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">MachineBio</span>
+            <span className="text-xl font-bold text-white font-heading">MachineBio</span>
           </Link>
 
           {/* Center Section - Search (authenticated) or Navigation (non-authenticated) */}
@@ -226,6 +229,20 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                 <Camera className="w-4 h-4" />
                 <span>Spots</span>
               </Link>
+              <Link
+                href={localePath('/groups')}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                <span>Groups</span>
+              </Link>
+              <Link
+                href={localePath('/simracing')}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+              >
+                <Gamepad2 className="w-4 h-4" />
+                <span>Sim Racing</span>
+              </Link>
             </div>
           )}
 
@@ -252,28 +269,40 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               </div>
             )}
 
-            {/* Chat Bubble - only for authenticated users */}
+            {/* Messages - Oil Pressure Light style */}
             {authenticated && (
               <Link
                 href={localePath('/messages')}
-                className="relative flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                className="relative flex items-center justify-center w-10 h-10 hover:bg-zinc-800 rounded-lg transition-colors"
                 title="Messages"
               >
-                <MessageCircle className="w-5 h-5" />
-                {/* TODO: Add unread message count badge */}
+                <OilPressureIcon
+                  className="w-6 h-6 dashboard-light-off"
+                  active={false}
+                />
+                {/* TODO: Add unread message count and make light active */}
               </Link>
             )}
 
-            {/* Notification Bell - only show when authenticated */}
+            {/* Notifications - Check Engine Light style */}
             {authenticated && (
               <div className="relative" ref={notifMenuRef}>
                 <button
                   onClick={handleNotifMenuOpen}
-                  className="relative flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                  className="relative flex items-center justify-center w-10 h-10 hover:bg-zinc-800 rounded-lg transition-colors"
                 >
-                  <Bell className="w-5 h-5" />
+                  <CheckEngineIcon
+                    className={`w-6 h-6 ${unreadCount > 0
+                      ? unreadCount >= 5
+                        ? `dashboard-light-red ${shouldAnimate('notificationAnimations') ? 'animate-dashboard-blink' : ''}`
+                        : `dashboard-light-amber ${shouldAnimate('notificationAnimations') ? 'animate-dashboard-glow' : ''}`
+                      : 'dashboard-light-off'
+                      }`}
+                    active={unreadCount > 0}
+                    blink={unreadCount >= 5 && shouldAnimate('notificationAnimations')}
+                  />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-orange-500 text-white text-xs font-bold rounded-full">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-amber-500 text-black text-[10px] font-bold rounded-full">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -440,6 +469,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
             <div className="flex flex-col gap-2">
               <Link
                 href={localePath('/')}
+                onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
               >
                 <Home className="w-5 h-5" />
@@ -447,6 +477,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               </Link>
               <Link
                 href={localePath('/cars')}
+                onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
               >
                 <LayoutGrid className="w-5 h-5" />
@@ -454,6 +485,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               </Link>
               <Link
                 href={localePath('/explore')}
+                onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
               >
                 <Search className="w-5 h-5" />
@@ -461,6 +493,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               </Link>
               <Link
                 href={localePath('/events')}
+                onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
               >
                 <CalendarDays className="w-5 h-5" />
@@ -468,6 +501,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               </Link>
               <Link
                 href={localePath('/leaderboards')}
+                onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
               >
                 <Trophy className="w-5 h-5" />
@@ -475,10 +509,27 @@ export default function Navbar({ locale, dict }: NavbarProps) {
               </Link>
               <Link
                 href={localePath('/spots')}
+                onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
               >
                 <Camera className="w-5 h-5" />
                 <span>Spots</span>
+              </Link>
+              <Link
+                href={localePath('/groups')}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
+              >
+                <Users className="w-5 h-5" />
+                <span>Groups</span>
+              </Link>
+              <Link
+                href={localePath('/simracing')}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
+              >
+                <Gamepad2 className="w-5 h-5" />
+                <span>Sim Racing</span>
               </Link>
 
               {/* Mobile Language Switcher */}
@@ -489,6 +540,7 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                     <Link
                       key={loc}
                       href={`/${loc}`}
+                      onClick={() => setIsMenuOpen(false)}
                       className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${loc === locale
                         ? 'bg-orange-500 text-white'
                         : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -517,17 +569,17 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
-                      <Link href={localePath('/garage')} className="flex-1">
+                      <Link href={localePath('/garage')} onClick={() => setIsMenuOpen(false)} className="flex-1">
                         <Button variant="outline" className="w-full">
                           {t.myGarage}
                         </Button>
                       </Link>
-                      <Button variant="ghost" className="text-red-400" onClick={logout}>
+                      <Button variant="ghost" className="text-red-400" onClick={() => { setIsMenuOpen(false); logout(); }}>
                         <LogOut className="w-5 h-5" />
                       </Button>
                     </div>
                     {user.role === 'admin' && (
-                      <Link href={localePath('/admin')}>
+                      <Link href={localePath('/admin')} onClick={() => setIsMenuOpen(false)}>
                         <Button variant="outline" className="w-full text-orange-400 border-orange-500/50 hover:bg-orange-500/10">
                           <Shield className="w-4 h-4 mr-2" />
                           Admin Panel
@@ -538,12 +590,12 @@ export default function Navbar({ locale, dict }: NavbarProps) {
                 </div>
               ) : (
                 <div className="flex gap-2 mt-4 px-4">
-                  <Link href={localePath('/login')} className="flex-1">
+                  <Link href={localePath('/login')} onClick={() => setIsMenuOpen(false)} className="flex-1">
                     <Button variant="outline" className="w-full">
                       {t.signIn}
                     </Button>
                   </Link>
-                  <Link href={localePath('/register')} className="flex-1">
+                  <Link href={localePath('/register')} onClick={() => setIsMenuOpen(false)} className="flex-1">
                     <Button variant="primary" className="w-full">
                       {t.getStarted}
                     </Button>

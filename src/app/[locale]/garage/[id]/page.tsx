@@ -113,7 +113,7 @@ export default function CarDetailPage() {
     const [powerValues, setPowerValues] = useState({ horsepower: '', torque: '' })
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
-    const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'history' | 'rating'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'history'>('overview')
     const [showAddNodeModal, setShowAddNodeModal] = useState(false)
     const [historyExpanded, setHistoryExpanded] = useState(false)
     const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null)
@@ -405,7 +405,7 @@ export default function CarDetailPage() {
                                     </Link>
                                 )}
                             </div>
-                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight">
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight font-heading">
                                 {carName}
                             </h1>
                             <div className="flex items-center gap-4 text-sm flex-wrap">
@@ -437,6 +437,18 @@ export default function CarDetailPage() {
                                         <span className="text-zinc-400">{carFollowerCount} follower{carFollowerCount !== 1 ? 's' : ''}</span>
                                     </>
                                 )}
+                                {avgRating > 0 && (
+                                    <>
+                                        <span className="text-zinc-600">•</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30">
+                                                <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
+                                                <span className="text-sm font-bold text-orange-400">{avgRating.toFixed(1)}</span>
+                                            </div>
+                                            <span className="text-zinc-500 text-xs">({ratings.length})</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -448,12 +460,6 @@ export default function CarDetailPage() {
                                     <User className="w-3.5 h-3.5 text-zinc-400" />
                                     <span className="text-sm font-medium text-white">{carFollowerCount}</span>
                                 </div>
-                                {avgRating > 0 && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur border border-white/10">
-                                        <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
-                                        <span className="text-sm font-medium text-white">{avgRating.toFixed(1)}</span>
-                                    </div>
-                                )}
                             </div>
                             <Link href={`/${locale}/feed`}>
                                 <Button variant="outline" className="backdrop-blur-md bg-white/5 border-white/10 hover:bg-white/10">
@@ -510,7 +516,7 @@ export default function CarDetailPage() {
                         {/* Tabs Navigation */}
                         <div className="border-b border-zinc-800">
                             <nav className="flex gap-6">
-                                {(['overview', 'specs', 'history', 'rating'] as const).map((tab) => (
+                                {(['overview', 'specs', 'history'] as const).map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
@@ -714,68 +720,6 @@ export default function CarDetailPage() {
                                 </div>
                             )}
 
-                            {activeTab === 'rating' && (
-                                <div className="space-y-6">
-                                    {/* Average Rating Display */}
-                                    <div className="flex items-center gap-4 p-6 rounded-xl bg-zinc-900 border border-zinc-800">
-                                        <div className="text-center">
-                                            <div className="text-4xl font-bold text-orange-400">{avgRating > 0 ? avgRating.toFixed(1) : '-'}</div>
-                                            <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Avg Rating</div>
-                                        </div>
-                                        <div className="flex-1 h-px bg-zinc-800" />
-                                        <div className="text-center">
-                                            <div className="text-2xl font-bold text-white">{ratings.length}</div>
-                                            <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Reviews</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Rate this car */}
-                                    {user && !isOwner && (
-                                        <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
-                                            <h3 className="text-white font-bold mb-4">Rate this Build</h3>
-                                            <div className="flex justify-center mb-4">
-                                                <RevLimiterRating
-                                                    value={myRating * 1000}
-                                                    onChange={(val) => setMyRating(Math.round(val / 1000))}
-                                                    size="md"
-                                                />
-                                            </div>
-                                            <textarea
-                                                value={myComment}
-                                                onChange={(e) => setMyComment(e.target.value)}
-                                                placeholder="Leave a comment (optional)..."
-                                                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-orange-500 resize-none"
-                                                rows={3}
-                                            />
-                                            <Button
-                                                className="w-full mt-4"
-                                                onClick={handleSubmitRating}
-                                                disabled={submittingRating || myRating < 1}
-                                            >
-                                                {submittingRating ? 'Submitting...' : 'Submit Rating'}
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    {/* Reviews List */}
-                                    {ratings.length > 0 && (
-                                        <div className="space-y-3">
-                                            {ratings.map(rating => (
-                                                <div key={rating.id} className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <Link href={`/${locale}/u/${rating.user.username}`} className="text-white font-medium hover:text-orange-400">
-                                                            {rating.user.name || rating.user.username}
-                                                        </Link>
-                                                        <span className="text-orange-400 font-bold">{rating.rating}/10</span>
-                                                    </div>
-                                                    {rating.comment && <p className="text-zinc-400 text-sm">{rating.comment}</p>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
                             {/* Comments Section - Full Width */}
                             {car.commentsEnabled ? (
                                 <div className="mt-8">
@@ -961,7 +905,7 @@ function StatStripItem({ label, value }: { label: string; value: string | null |
     return (
         <div className="shrink-0 flex flex-col min-w-[100px]">
             <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">{label}</span>
-            <span className="text-lg text-zinc-200 font-medium whitespace-nowrap">{value}</span>
+            <span className="text-lg text-zinc-200 font-medium whitespace-nowrap font-mono">{value}</span>
         </div>
     )
 }
@@ -1038,7 +982,7 @@ function PowerMetric({ label, value, unit, stock, verified, hasPendingProof, isS
                 </span>
             </div>
             <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-white group-hover:text-orange-400 transition-colors">{value}</span>
+                <span className="text-2xl font-bold text-white group-hover:text-orange-400 transition-colors font-mono">{value}</span>
                 <span className="text-xs text-zinc-600 font-medium">{unit}</span>
             </div>
             {stock && diff !== 0 && (

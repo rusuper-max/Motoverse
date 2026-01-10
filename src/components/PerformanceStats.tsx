@@ -145,7 +145,7 @@ export default function PerformanceStats({ carId, showOnlyVerified = false, isOw
                                 <span className="text-xs text-zinc-400">{config.label}</span>
                             </div>
                             <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-bold text-white">
+                                <span className="text-2xl font-bold text-white font-mono">
                                     {formatTime(time.timeMs)}
                                 </span>
                                 <span className="text-sm text-zinc-500">{config.unit}</span>

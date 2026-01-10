@@ -54,6 +54,16 @@ model User {
   spotGuesses            CarSpotGuess[]
   spotRatings            CarSpotRating[]
   spotComments           CarSpotComment[]
+
+  // Groups relations
+  groupMemberships       GroupMember[]
+  groupPosts             GroupPost[]
+  groupPostComments      GroupPostComment[]
+  groupPostLikes         GroupPostLike[]
+  groupJoinRequests      GroupJoinRequest[]
+
+  // Sim Racing relations
+  simLapTimes            SimLapTime[]
 }
 
 model CarMake {
@@ -628,4 +638,247 @@ model CarSpotComment {
   @@index([spotId])
   @@index([authorId])
   @@index([parentId])
+}
+
+// ==========================================
+// GROUPS FEATURE (Facebook-style)
+// ==========================================
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  coverImage  String?
+  avatar      String?
+
+  // Privacy settings
+  privacy     String   @default("public") // public, private, secret
+
+  // Group type/category
+  category    String?  // cars, simracing, meets, tuning, etc.
+
+  // Settings
+  requireApproval   Boolean @default(false) // Require admin approval for posts
+  allowMemberPosts  Boolean @default(true)
+
+  // Stats (denormalized for performance)
+  memberCount Int     @default(0)
+  postCount   Int     @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members     GroupMember[]
+  posts       GroupPost[]
+  joinRequests GroupJoinRequest[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([privacy])
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  role      String   @default("member") // owner, admin, moderator, member
+
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt  DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@index([role])
+}
+
+model GroupJoinRequest {
+  id        String   @id @default(cuid())
+  status    String   @default("pending") // pending, approved, rejected
+  message   String?  // Optional message from requester
+
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  reviewedAt DateTime?
+  reviewedById String?
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([status])
+}
+
+model GroupPost {
+  id        String   @id @default(cuid())
+  content   String
+  images    String[] @default([])
+
+  // Optional link to a car (for car-related posts)
+  carId     String?
+
+  isPinned  Boolean  @default(false)
+
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments  GroupPostComment[]
+  likes     GroupPostLike[]
+
+  @@index([groupId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model GroupPostComment {
+  id        String   @id @default(cuid())
+  content   String
+
+  postId    String
+  post      GroupPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  parentId  String?
+  parent    GroupPostComment?  @relation("GroupCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   GroupPostComment[] @relation("GroupCommentReplies")
+
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model GroupPostLike {
+  id        String    @id @default(cuid())
+
+  postId    String
+  post      GroupPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+}
+
+// ==========================================
+// SIM RACING FEATURE
+// ==========================================
+
+model SimGame {
+  id          String   @id @default(cuid())
+  name        String   @unique // "iRacing", "Assetto Corsa Competizione", "F1 24", etc.
+  slug        String   @unique
+  shortName   String?  // "ACC", "iR", "F1"
+  logo        String?
+  coverImage  String?
+  platform    String[] @default([]) // ["PC", "PlayStation", "Xbox"]
+
+  createdAt   DateTime @default(now())
+
+  tracks      SimTrack[]
+  cars        SimCar[]
+  lapTimes    SimLapTime[]
+
+  @@index([slug])
+}
+
+model SimTrack {
+  id           String   @id @default(cuid())
+  name         String   // "Spa-Francorchamps", "Nürburgring Nordschleife"
+  slug         String
+  country      String?
+  lengthMeters Int?
+  configuration String? // "GP", "National", "Full"
+
+  gameId       String
+  game         SimGame  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  lapTimes     SimLapTime[]
+
+  @@unique([gameId, slug])
+  @@index([gameId])
+}
+
+model SimCar {
+  id        String   @id @default(cuid())
+  name      String   // "BMW M4 GT3", "Porsche 911 GT3 R"
+  class     String?  // "GT3", "GT4", "LMP2", "F1"
+
+  gameId    String
+  game      SimGame  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  lapTimes  SimLapTime[]
+
+  @@unique([gameId, name])
+  @@index([gameId])
+  @@index([class])
+}
+
+model SimLapTime {
+  id          String   @id @default(cuid())
+
+  // Time in milliseconds
+  timeMs      Int
+
+  // Formatted time string for display (optional, can be computed)
+  timeFormatted String?
+
+  // Conditions
+  weather     String?  // "Dry", "Wet", "Mixed"
+  assists     String?  // "None", "TC Only", "Full"
+
+  // Proof
+  proofUrl    String?  // Video/screenshot link
+  proofType   String?  // "video", "screenshot", "telemetry"
+
+  // Verification
+  status      String   @default("pending") // pending, verified, rejected
+  verifiedAt  DateTime?
+  verifiedBy  String?
+
+  // Setup info (optional)
+  setupNotes  String?
+
+  // Relations
+  gameId      String
+  game        SimGame  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  trackId     String
+  track       SimTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  carId       String
+  car         SimCar   @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([gameId])
+  @@index([trackId])
+  @@index([carId])
+  @@index([userId])
+  @@index([status])
+  @@index([timeMs])
 }

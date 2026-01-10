@@ -15,7 +15,8 @@ import {
   TrendingUp,
   MessageSquare,
   Bell,
-  Camera
+  Camera,
+  Gamepad2
 } from 'lucide-react'
 
 interface FeedSidebarProps {
@@ -36,6 +37,8 @@ export default function FeedSidebar({ locale, user }: FeedSidebarProps) {
     { href: `/${locale}/explore`, label: 'Explore', icon: Search },
     { href: `/${locale}/garage`, label: 'My Garage', icon: Car },
     { href: `/${locale}/spots`, label: 'Car Spotting', icon: Camera },
+    { href: `/${locale}/groups`, label: 'Groups', icon: Users },
+    { href: `/${locale}/simracing`, label: 'Sim Racing', icon: Gamepad2 },
     { href: `/${locale}/events`, label: 'Events', icon: CalendarDays },
     { href: `/${locale}/leaderboards`, label: 'Leaderboards', icon: Trophy },
   ]

@@ -376,8 +376,10 @@ export default async function ModelPage({ params }: Props) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {recentCars.map((car) => {
-                const carMake = car.generation?.model?.make?.name || model.make.name
-                const carModel = car.generation?.model?.name || model.name
+                // Use generation data if available, otherwise fall back to the model page's data
+                const gen = car.generation as { model?: { make?: { name: string }, name: string }, displayName?: string | null, name: string } | null
+                const carMake = gen?.model?.make?.name || model.make.name
+                const carModel = gen?.model?.name || model.name
 
                 return (
                   <Link
@@ -410,9 +412,9 @@ export default async function ModelPage({ params }: Props) {
                       <h3 className="font-medium text-white group-hover:text-orange-400 transition-colors">
                         {car.year} {carMake} {carModel}
                       </h3>
-                      {car.generation && (
+                      {gen && (
                         <p className="text-sm text-orange-400/70 mt-0.5">
-                          {car.generation.displayName || car.generation.name}
+                          {gen.displayName || gen.name}
                         </p>
                       )}
 

@@ -173,7 +173,7 @@ export default function LeaderboardsPage() {
                         <Trophy className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-white">Leaderboards</h1>
+                        <h1 className="text-3xl font-bold text-white font-heading">Leaderboards</h1>
                         <p className="text-zinc-400">Community performance times</p>
                     </div>
                 </div>
@@ -334,7 +334,7 @@ export default function LeaderboardsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-4">
-                                                    <span className="text-xl font-bold text-white">{formatTime(time.timeMs)}</span>
+                                                    <span className="text-xl font-bold text-white font-mono">{formatTime(time.timeMs)}</span>
                                                     {time.proofUrl && (
                                                         <span className="ml-2 text-xs text-green-400">✓ Verified</span>
                                                     )}
@@ -357,7 +357,7 @@ export default function LeaderboardsPage() {
                                                 </td>
                                                 <td className="px-4 py-4">
                                                     {time.carHp ? (
-                                                        <span className="text-zinc-300">{time.carHp} HP</span>
+                                                        <span className="text-zinc-300 font-mono">{time.carHp} HP</span>
                                                     ) : (
                                                         <span className="text-zinc-600">-</span>
                                                     )}

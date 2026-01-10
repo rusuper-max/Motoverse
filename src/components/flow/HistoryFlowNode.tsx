@@ -37,50 +37,62 @@ function HistoryFlowNode({ data, selected }: HistoryFlowNodeProps) {
         day: 'numeric',
         year: 'numeric',
     })
-
     return (
         <>
             {/* Input Handle (left side) */}
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-500"
+                className="!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-500 rounded-full"
             />
 
             {/* Node Card */}
-            <div className={`w-52 bg-zinc-900 border rounded-xl p-4 transition-all cursor-grab active:cursor-grabbing ${selected ? 'border-orange-500 shadow-lg shadow-orange-500/20' : 'border-zinc-800 hover:border-zinc-700'
-                }`}>
-                {/* Header */}
-                <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${nodeType.color} flex items-center justify-center`}>
-                        <Icon className="w-4 h-4 text-white" />
+            <div className={`
+                w-[280px] bg-zinc-900 rounded-xl border transition-all shadow-xl group
+                ${selected ? 'border-orange-500 ring-1 ring-orange-500' : 'border-zinc-800 hover:border-zinc-700'}
+            `}>
+                {/* Header Color Strip based on type */}
+                <div className={`h-1.5 w-full rounded-t-xl bg-gradient-to-r ${nodeType.color}`} />
+
+                <div className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                            <Icon className="w-3 h-3" />
+                            {nodeType.label}
+                        </span>
+                        {data.cost && <span className="text-xs font-medium text-green-400 font-mono">€{data.cost.toLocaleString()}</span>}
                     </div>
-                    <span className="text-xs text-zinc-500">{nodeType.label}</span>
-                    {data.isLocked && <span className="text-xs">🔒</span>}
-                    {data.post && <span className="text-xs ml-auto" title="Linked to Blog Post">📝</span>}
+
+                    <h3 className="text-sm font-bold text-zinc-100 mb-1 line-clamp-2">{data.title}</h3>
+                    <p className="text-xs text-zinc-500 mb-3">{formattedDate}</p>
+
+                    {data.description && (
+                        <p className="text-xs text-zinc-400 line-clamp-2 mb-3 bg-zinc-950/50 p-2 rounded border border-zinc-800/50">
+                            {data.description}
+                        </p>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-auto pt-2 border-t border-zinc-800/50">
+                        {data.mileage && (
+                            <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                                <span className="text-zinc-600">Km:</span>
+                                <span className="font-mono">{data.mileage.toLocaleString()}</span>
+                            </span>
+                        )}
+                        {data.isLocked && <span className="text-xs ml-auto">🔒</span>}
+                        {data.post && <span className="text-xs ml-auto" title="Linked to Blog Post">📝</span>}
+                    </div>
                 </div>
 
-                {/* Title */}
-                <h3 className="font-medium text-white text-sm mb-1 line-clamp-2">{data.title}</h3>
-
-                {/* Date */}
-                <p className="text-xs text-zinc-500 mb-2">{formattedDate}</p>
-
-                {/* Details */}
-                {(data.mileage || data.cost) && (
-                    <div className="flex gap-2 text-xs text-zinc-600">
-                        {data.mileage && <span>{data.mileage.toLocaleString()} km</span>}
-                        {data.mileage && data.cost && <span>•</span>}
-                        {data.cost && <span>€{data.cost}</span>}
-                    </div>
-                )}
+                {/* Connection Handles (Visual Only - Center Top/Bottom for vertical flows? No, stick to Left/Right for horizontal) */}
+                {/* We keep the standard Handles but style them better */}
             </div>
 
             {/* Output Handle (right side) */}
             <Handle
                 type="source"
                 position={Position.Right}
-                className="!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-500"
+                className="!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-500 rounded-full"
             />
         </>
     )

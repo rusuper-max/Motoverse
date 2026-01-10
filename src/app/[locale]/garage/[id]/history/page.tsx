@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
@@ -17,9 +17,10 @@ import {
     type Connection,
     type OnNodeDrag,
     type OnConnectStart,
+    type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp, FileText } from 'lucide-react'
+import { ArrowLeft, Car, User, Calendar, Save, Loader2, DollarSign, ChevronDown, ChevronUp, FileText, Plus, Search, Filter, Layout, ZoomIn, ZoomOut, Maximize, Layers, Wrench, ChevronRight } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import HistoryFlowNode from '@/components/flow/HistoryFlowNode'
 import DeletableEdge from '@/components/flow/DeletableEdge'
@@ -114,6 +115,32 @@ const getEventClientPoint = (event: MouseEvent | TouchEvent) => {
     return { x: touch?.clientX ?? 0, y: touch?.clientY ?? 0 }
 }
 
+const CostBar = ({ category, amount, total, color }: any) => {
+    if (!amount) return null
+    const percentage = (amount / total) * 100
+    // Formatting helper
+    const label: Record<string, string> = {
+        purchase: 'Purchase',
+        mod_engine: 'Engine',
+        mod_suspension: 'Suspension',
+        mod_exterior: 'Exterior',
+        maintenance: 'Maintenance',
+        trip: 'Trip'
+    }
+
+    return (
+        <div className="mb-3">
+            <div className="flex justify-between text-xs mb-1">
+                <span className="text-zinc-400 capitalize">{label[category] || category}</span>
+                <span className="text-zinc-200 font-mono">€{amount.toLocaleString()}</span>
+            </div>
+            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: color }} />
+            </div>
+        </div>
+    )
+}
+
 export default function HistoryPage() {
     const params = useParams()
     const locale = params.locale as Locale
@@ -133,6 +160,21 @@ export default function HistoryPage() {
     const [editingNode, setEditingNode] = useState<HistoryNodeData | null>(null)
     const [insertionContext, setInsertionContext] = useState<{ parentId: string; childId: string } | null>(null)
     const [popupData, setPopupData] = useState<PopupData | null>(null)
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [activeFilter, setActiveFilter] = useState('all')
+    const [rfInstance, setRfInstance] = useState<ReactFlowInstance<HistoryFlowNode, HistoryFlowEdge> | null>(null)
+
+    // Calculated stats
+    const stats = useMemo(() => {
+        // Use rawNodes for calculation as they contain the cost data
+        const totalCost = rawNodes.reduce((sum, node) => sum + (node.cost || 0), 0)
+        const categories = rawNodes.reduce((acc: any, node) => {
+            const type = node.type
+            acc[type] = (acc[type] || 0) + (node.cost || 0)
+            return acc
+        }, {})
+        return { totalCost, categories }
+    }, [rawNodes])
 
     const [nodes, setNodes, onNodesChange] = useNodesState<HistoryFlowNode>([])
     const [edges, setEdges, onEdgesChange] = useEdgesState<HistoryFlowEdge>([])
@@ -142,6 +184,11 @@ export default function HistoryPage() {
     const connectingNodeId = useRef<string | null>(null)
 
     const isOwner = user?.id === car?.ownerId
+
+    // Set sidebar open by default only on desktop
+    useEffect(() => {
+        setIsSidebarOpen(window.innerWidth >= 768)
+    }, [])
 
     useEffect(() => {
         fetchCar()
@@ -449,21 +496,44 @@ export default function HistoryPage() {
     const handleDeleteNode = useCallback(async () => {
         if (!contextMenu?.nodeId) return
 
+        const nodeToDelete = contextMenu.nodeId
+
+        // Find parent and children of the node being deleted
+        const parentEdge = edges.find(e => e.target === nodeToDelete)
+        const childEdges = edges.filter(e => e.source === nodeToDelete)
+
         try {
-            const res = await fetch(`/api/cars/${carId}/history/${contextMenu.nodeId}`, {
+            const res = await fetch(`/api/cars/${carId}/history/${nodeToDelete}`, {
                 method: 'DELETE',
             })
             if (res.ok) {
-                setNodes((nds) => nds.filter((node) => node.id !== contextMenu.nodeId))
-                setEdges((eds) => eds.filter((edge) => edge.source !== contextMenu.nodeId && edge.target !== contextMenu.nodeId))
-                // Also update rawNodes for cost calculation
-                setRawNodes(prev => prev.filter(n => n.id !== contextMenu.nodeId))
+                // If this node had both parent and children, relink them
+                if (parentEdge && childEdges.length > 0) {
+                    // Update all children to point to the deleted node's parent
+                    await Promise.all(
+                        childEdges.map(childEdge =>
+                            fetch(`/api/cars/${carId}/history/${childEdge.target}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ parentId: parentEdge.source }),
+                            })
+                        )
+                    )
+                }
+
+                // Remove from UI
+                setNodes((nds) => nds.filter((node) => node.id !== nodeToDelete))
+                setEdges((eds) => eds.filter((edge) => edge.source !== nodeToDelete && edge.target !== nodeToDelete))
+                setRawNodes(prev => prev.filter(n => n.id !== nodeToDelete))
+
+                // Refresh to get updated connections
+                fetchNodes()
             }
         } catch (err) {
             console.error('Failed to delete node:', err)
         }
         setContextMenu(null)
-    }, [contextMenu, carId, setNodes, setEdges])
+    }, [contextMenu, carId, setNodes, setEdges, edges, fetchNodes])
 
     const handleEditNode = useCallback(() => {
         if (!contextMenu?.nodeId) return
@@ -550,332 +620,332 @@ export default function HistoryPage() {
         setShowAddModal(false)
     }
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full" />
-            </div>
-        )
-    }
-
-    if (!car) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-zinc-400">Car not found</p>
-            </div>
-        )
-    }
-
-    const carName = `${car.generation?.model.make.name || ''} ${car.generation?.model.name || ''}`
-    const genName = car.generation?.displayName || car.generation?.name || ''
+    if (loading) return <div className="h-screen bg-zinc-950 flex items-center justify-center text-orange-500"><Loader2 className="animate-spin" /></div>
+    if (!car) return null
 
     return (
-        <div className="h-screen flex overflow-hidden pt-16">
-            {/* Sidebar */}
-            <div className="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col">
-                {/* Back button */}
-                <div className="p-4 border-b border-zinc-800">
-                    <Link
-                        href={`/${locale}/garage/${carId}`}
-                        className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Car
-                    </Link>
-                </div>
+        <div className="h-screen w-full bg-zinc-950 flex overflow-hidden text-zinc-200 font-sans pt-16">
 
-                {/* Car Info */}
-                <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-                    {car.image ? (
-                        <div className="aspect-video rounded-xl overflow-hidden bg-zinc-800">
+            {/* --- Enhanced Sidebar --- */}
+            <aside className={`
+                bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800 flex flex-col transition-all duration-300 ease-in-out z-20 shrink-0
+                fixed md:relative inset-y-0 left-0 pt-16 md:pt-0
+                ${isSidebarOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0 pointer-events-none'}
+            `}>
+                {/* Header with Car Image Background */}
+                <div className="relative h-48 shrink-0 group">
+                    <div className="absolute inset-0">
+                        {car.image ? (
                             <img src={car.image} alt="" className="w-full h-full object-cover" />
-                        </div>
-                    ) : (
-                        <div className="aspect-video rounded-xl bg-zinc-800 flex items-center justify-center">
-                            <Car className="w-12 h-12 text-zinc-700" />
-                        </div>
-                    )}
-
-                    <div>
-                        <h1 className="text-xl font-bold text-white">{car.nickname || carName}</h1>
-                        <p className="text-zinc-400">{car.year} {genName}</p>
+                        ) : (
+                            <div className="w-full h-full bg-zinc-800 flex items-center justify-center"><Car className="text-zinc-600" /></div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent" />
                     </div>
 
-                    <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-zinc-400">
-                            <User className="w-4 h-4" />
-                            <span>@{car.owner.username}</span>
+                    <div className="absolute top-4 left-4 z-10">
+                        <Link href={`/${locale}/garage/${carId}`} className="p-3 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-md transition-colors border border-white/20 flex items-center justify-center shadow-lg">
+                            <ArrowLeft className="w-5 h-5" />
+                        </Link>
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 right-4 z-10">
+                        <h1 className="text-xl font-bold text-white truncate">{car.nickname || 'My Build'}</h1>
+                        <p className="text-xs text-zinc-300 font-medium">{car.year} {car.generation?.displayName || car.generation?.model?.name}</p>
+                    </div>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
+
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Events</p>
+                            <p className="text-lg font-bold text-white font-mono">{rawNodes.length}</p>
                         </div>
-                        <div className="flex items-center gap-2 text-zinc-400">
-                            <Calendar className="w-4 h-4" />
-                            <span>{nodes.length} events</span>
+                        <div className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Invested</p>
+                            <p className="text-lg font-bold text-green-400 font-mono">€{(stats.totalCost / 1000).toFixed(1)}k</p>
                         </div>
                     </div>
 
-                    {/* Cost Summary */}
-                    {totalCost > 0 && (
-                        <div className="bg-zinc-800/50 rounded-xl p-3 border border-zinc-700">
-                            <button
-                                onClick={() => setShowCostBreakdown(!showCostBreakdown)}
-                                className="w-full flex items-center justify-between text-left"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-green-400" />
-                                    <span className="text-sm text-zinc-300">Total Invested</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-lg font-bold text-green-400">€{totalCost.toLocaleString()}</span>
-                                    {showCostBreakdown ? (
-                                        <ChevronUp className="w-4 h-4 text-zinc-500" />
-                                    ) : (
-                                        <ChevronDown className="w-4 h-4 text-zinc-500" />
-                                    )}
-                                </div>
-                            </button>
-
-                            {showCostBreakdown && (
-                                <div className="mt-3 pt-3 border-t border-zinc-700 space-y-2">
-                                    {Object.entries(costsByCategory).map(([category, cost]) => (
-                                        <div key={category} className="flex items-center justify-between text-xs">
-                                            <span className="text-zinc-400">{categoryLabels[category] || category}</span>
-                                            <span className="text-zinc-300">€{cost.toLocaleString()}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Add Event Button */}
-                    {isOwner && (
-                        <>
-                            <Button onClick={() => setShowAddModal(true)} className="w-full">
-                                Add Event
-                            </Button>
-
-                            {/* Autosave Toggle */}
-                            <div className="flex items-center justify-between bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700">
-                                <span className="text-sm text-zinc-400">Autosave</span>
-                                <button
-                                    onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
-                                    className={`w-10 h-5 rounded-full transition-colors relative ${autoSaveEnabled ? 'bg-green-500' : 'bg-zinc-600'
-                                        }`}
-                                >
-                                    <span
-                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${autoSaveEnabled ? 'left-5' : 'left-0.5'
-                                            }`}
-                                    />
-                                </button>
+                    {/* Financial Breakdown */}
+                    {stats.totalCost > 0 && (
+                        <div>
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <DollarSign className="w-3 h-3" /> Investment Split
+                            </h3>
+                            <div className="p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-sm">
+                                <CostBar category="purchase" amount={stats.categories['purchase']} total={stats.totalCost} color="#10b981" />
+                                <CostBar category="mod_engine" amount={stats.categories['mod_engine']} total={stats.totalCost} color="#f97316" />
+                                <CostBar category="mod_suspension" amount={stats.categories['mod_suspension']} total={stats.totalCost} color="#3b82f6" />
+                                <CostBar category="mod_exterior" amount={stats.categories['mod_exterior']} total={stats.totalCost} color="#a855f7" />
+                                <CostBar category="maintenance" amount={stats.categories['maintenance']} total={stats.totalCost} color="#ef4444" />
                             </div>
-                        </>
+                        </div>
+                    )}
+
+                    {/* Autosave Switch */}
+                    {isOwner && (
+                        <div className="flex items-center justify-between py-2 border-t border-zinc-800">
+                            <span className="text-sm text-zinc-400">Autosave changes</span>
+                            <button
+                                onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
+                                className={`w-9 h-5 rounded-full transition-colors relative ${autoSaveEnabled ? 'bg-orange-600' : 'bg-zinc-700'}`}
+                            >
+                                <span className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${autoSaveEnabled ? 'left-5' : 'left-1'}`} />
+                            </button>
+                        </div>
                     )}
                 </div>
+            </aside>
 
-                {/* Instructions */}
-                <div className="p-4 border-t border-zinc-800 text-xs text-zinc-500">
-                    <p className="mb-1"><strong>Tips:</strong></p>
-                    <ul className="space-y-1">
-                        <li>• Drag nodes to reposition</li>
-                        <li>• Right-click for options</li>
-                        <li>• Scroll to zoom</li>
-                        <li>• Positions save automatically</li>
-                    </ul>
-                </div>
-            </div>
+            {/* Sidebar Toggle (Floating) */}
+            <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`fixed md:absolute top-20 md:top-[4.5rem] z-30 p-2 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg hover:text-white transition-all hover:bg-zinc-700 ${isSidebarOpen ? 'left-[20.5rem]' : 'left-4'}`}
+            >
+                {isSidebarOpen ? <Layout className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
 
-            {/* React Flow Canvas */}
-            <div ref={reactFlowWrapper} className="flex-1 bg-zinc-950">
-                <ReactFlow
+            {/* Mobile Overlay when sidebar is open */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-10 md:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+
+            {/* --- Main Canvas Area --- */}
+            <div className="flex-1 relative h-full bg-zinc-950" ref={reactFlowWrapper}>
+                <ReactFlow<HistoryFlowNode, HistoryFlowEdge>
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
-                    onConnectStart={onConnectStart}
-                    onConnectEnd={onConnectEnd}
                     onNodeDragStop={onNodeDragStop}
-                    onPaneClick={handlePaneClick}
-                    onNodeClick={onNodeClick}
-                    onNodeContextMenu={handleContextMenu}
-                    onPaneContextMenu={handlePaneContextMenu}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    fitView
-                    minZoom={0.2}
-                    maxZoom={2}
-                    defaultEdgeOptions={{
-                        type: 'deletable',
-                        style: { stroke: '#52525b', strokeWidth: 2 },
-                    }}
-                    proOptions={{ hideAttribution: true }}
+                    onPaneContextMenu={handlePaneContextMenu}
+                    onNodeContextMenu={handleContextMenu}
+                    onPaneClick={handlePaneClick}
+                    onNodeClick={onNodeClick}
+                    onConnectStart={onConnectStart}
+                    onConnectEnd={onConnectEnd}
+                    onInit={setRfInstance}
+                    defaultEdgeOptions={{ type: 'deletable', animated: false }}
+                    className="bg-zinc-950 [&_.react-flow__node.selected]:shadow-none [&_.react-flow__node.selected_.react-flow__handle]:!opacity-100"
+                    minZoom={0.1}
+                    maxZoom={1.5}
+                    nodesConnectable={isOwner}
                 >
                     <Background
-                        variant={BackgroundVariant.Dots}
-                        gap={24}
-                        size={1}
                         color="#27272a"
+                        gap={20}
+                        size={1}
+                        variant={BackgroundVariant.Dots}
                     />
-                    <Controls
-                        className="!bg-zinc-800 !border-zinc-700 !rounded-lg !mb-4 !ml-4 [&>button]:!bg-zinc-800 [&>button]:!border-zinc-700 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-700"
-                    />
-                    <MiniMap
-                        className="!bg-zinc-900 !border-zinc-800"
-                        nodeColor="#52525b"
-                        maskColor="rgba(0,0,0,0.7)"
-                    />
-                    <Panel position="top-right" className="bg-zinc-900/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-zinc-800">
-                        <span className="text-xs text-zinc-400">
-                            {nodes.length} node{nodes.length !== 1 ? 's' : ''}
-                        </span>
+
+                    {/* Custom Controls Panel (Bottom Center) */}
+                    <Panel position="bottom-center" className="mb-8">
+                        <div className="flex items-center gap-1 p-1.5 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-2xl shadow-xl shadow-black/50">
+                            {isOwner && (
+                                <>
+                                    <button
+                                        onClick={() => setShowAddModal(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-orange-900/20"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Add Event</span>
+                                    </button>
+                                    <div className="w-px h-6 bg-zinc-700 mx-1" />
+                                </>
+                            )}
+
+                            <button className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors" title="Zoom In" onClick={() => rfInstance?.zoomIn()}>
+                                <ZoomIn className="w-4 h-4" />
+                            </button>
+                            <button className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors" title="Zoom Out" onClick={() => rfInstance?.zoomOut()}>
+                                <ZoomOut className="w-4 h-4" />
+                            </button>
+                            <button className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors" title="Fit View" onClick={() => rfInstance?.fitView({ padding: 0.2 })}>
+                                <Maximize className="w-4 h-4" />
+                            </button>
+
+                            <div className="w-px h-6 bg-zinc-700 mx-1" />
+
+                            <button className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors" title="Filter Layers">
+                                <Layers className="w-4 h-4" />
+                            </button>
+                        </div>
                     </Panel>
 
-                    {/* Floating Save Button when changes detected AND autosave is OFF */}
-                    {hasChanges && isOwner && !autoSaveEnabled && (
-                        <Panel position="top-center">
+                    {/* Unsaved Changes Indicator */}
+                    {!autoSaveEnabled && hasChanges && (
+                        <Panel position="top-center" className="mt-4">
                             <button
                                 onClick={savePositions}
-                                disabled={saving}
                                 className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg shadow-lg shadow-orange-500/30 transition-all animate-pulse"
                             >
-                                {saving ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    <Save className="w-5 h-5" />
-                                )}
-                                {saving ? 'Saving...' : 'Save Changes'}
+                                <Save className="w-4 h-4" />
+                                Save Changes
                             </button>
                         </Panel>
                     )}
                 </ReactFlow>
-            </div>
 
-            {/* Context Menu */}
-            {contextMenu && (
-                <FlowContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    nodeId={contextMenu.nodeId}
-                    isOwner={isOwner}
-                    onClose={() => setContextMenu(null)}
-                    onAddNode={handleAddNode}
-                    onEditNode={handleEditNode}
-                    onDeleteNode={handleDeleteNode}
-                    onBranchNode={handleBranchNode}
-                />
-            )}
-
-            {/* Add Node Modal */}
-            {showAddModal && (
-                <AddNodeModal
-                    carId={carId}
-                    parentId={insertionContext?.parentId || pendingConnection?.sourceNodeId}
-                    onClose={() => {
-                        setShowAddModal(false)
-                        setInsertionContext(null)
-                        setPendingConnection(null)
-                    }}
-                    onSuccess={handleNodeCreated}
-                />
-            )}
-
-            {/* Edit Node Modal */}
-            {editingNode && (
-                <EditNodeModal
-                    node={editingNode}
-                    carId={carId}
-                    onClose={() => setEditingNode(null)}
-                    onSuccess={() => {
-                        fetchNodes()
-                        setEditingNode(null)
-                    }}
-                />
-            )}
-
-            {/* Floating Node Detail Popup */}
-            {popupData && (
-                <div
-                    className="fixed z-50 w-80 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-                    style={{
-                        left: Math.min(popupData.x, window.innerWidth - 340),
-                        top: Math.max(20, popupData.y - 20),
-                        transform: 'translateY(-100%)'
-                    }}
-                >
-                    {/* Header */}
-                    <div className="p-4 border-b border-zinc-800">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                                <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{popupData.nodeData.type}</span>
-                                <h3 className="text-white font-bold mt-1 line-clamp-2">{popupData.nodeData.title}</h3>
-                            </div>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    setPopupData(null)
-                                }}
-                                className="shrink-0 w-6 h-6 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        {/* Meta Info */}
-                        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-zinc-400">
-                            {popupData.nodeData.date && (
-                                <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(popupData.nodeData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                                </span>
-                            )}
-                            {popupData.nodeData.mileage && (
-                                <span className="flex items-center gap-1">
-                                    <Car className="w-3 h-3" />
-                                    {popupData.nodeData.mileage.toLocaleString()} km
-                                </span>
-                            )}
-                            {popupData.nodeData.cost && popupData.nodeData.cost > 0 && (
-                                <span className="flex items-center gap-1 text-green-400 font-medium">
-                                    <DollarSign className="w-3 h-3" />
-                                    €{popupData.nodeData.cost.toLocaleString()}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <div className="p-4 max-h-40 overflow-y-auto">
-                        {popupData.nodeData.description ? (
-                            <p className="text-sm text-zinc-300 whitespace-pre-wrap">{popupData.nodeData.description}</p>
-                        ) : (
-                            <p className="text-sm text-zinc-600 italic">No description provided</p>
-                        )}
-                    </div>
-
-                    {/* Linked Blog Post */}
-                    {popupData.post && (
-                        <div className="p-4 pt-0">
-                            <Link
-                                href={`/${locale}/posts/${popupData.post.id}`}
-                                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-orange-500/50 transition-colors"
-                            >
-                                {popupData.post.thumbnail && (
-                                    <img src={popupData.post.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-orange-400 font-medium">Linked Blog Post</p>
-                                    <p className="text-white text-sm font-medium truncate">{popupData.post.title}</p>
-                                </div>
-                                <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
-                            </Link>
-                        </div>
-                    )}
-
-                    {/* Arrow Pointer */}
-                    <div
-                        className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-900 border-b border-r border-zinc-700 transform rotate-45"
+                {/* Modals and Context Menus */}
+                {contextMenu && (
+                    <FlowContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        nodeId={contextMenu.nodeId}
+                        isOwner={isOwner}
+                        onClose={() => setContextMenu(null)}
+                        onAddNode={(type) => handleAddNode(type)}
+                        onDeleteNode={handleDeleteNode}
+                        onEditNode={handleEditNode}
+                        onBranchNode={handleBranchNode}
                     />
-                </div>
-            )}
+                )}
+
+                {showAddModal && (
+                    <AddNodeModal
+                        carId={carId}
+                        parentId={insertionContext?.parentId || pendingConnection?.sourceNodeId}
+                        onClose={() => {
+                            setShowAddModal(false)
+                            setInsertionContext(null)
+                            setPendingConnection(null)
+                        }}
+                        onSuccess={(newNode) => {
+                            if (newNode && pendingConnection && rfInstance) {
+                                // Calculate position from screen coordinates
+                                const position = rfInstance.screenToFlowPosition({
+                                    x: pendingConnection.x,
+                                    y: pendingConnection.y
+                                })
+
+                                // Update the newly created node's position
+                                fetch(`/api/cars/${carId}/history/${newNode.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        positionX: position.x - 140, // Center the node (width is 280)
+                                        positionY: position.y - 80,  // Adjust for node height
+                                    }),
+                                }).then(() => {
+                                    handleNodeCreated(newNode)
+                                    setPendingConnection(null)
+                                })
+                            } else {
+                                handleNodeCreated(newNode)
+                            }
+                        }}
+                    />
+                )}
+
+                {editingNode && (
+                    <EditNodeModal
+                        node={editingNode}
+                        carId={carId}
+                        onClose={() => setEditingNode(null)}
+                        onSuccess={() => {
+                            fetchNodes()
+                            setEditingNode(null)
+                        }}
+                    />
+                )}
+
+                {/* Floating Node Detail Popup */}
+                {popupData && (
+                    <div
+                        className="fixed z-50 w-80 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        style={{
+                            left: Math.min(popupData.x, window.innerWidth - 340),
+                            top: Math.max(20, popupData.y - 20),
+                            transform: 'translateY(-100%)'
+                        }}
+                    >
+                        {/* Header */}
+                        <div className="p-4 border-b border-zinc-800">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-medium text-orange-400 uppercase tracking-wider">{popupData.nodeData.type}</span>
+                                    <h3 className="text-white font-bold mt-1 line-clamp-2">{popupData.nodeData.title}</h3>
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setPopupData(null)
+                                    }}
+                                    className="shrink-0 w-6 h-6 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {/* Meta Info */}
+                            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-zinc-400">
+                                {popupData.nodeData.date && (
+                                    <span className="flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {new Date(popupData.nodeData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </span>
+                                )}
+                                {popupData.nodeData.mileage && (
+                                    <span className="flex items-center gap-1">
+                                        <Car className="w-3 h-3" />
+                                        <span className="font-mono">{popupData.nodeData.mileage.toLocaleString()} km</span>
+                                    </span>
+                                )}
+                                {popupData.nodeData.cost && popupData.nodeData.cost > 0 && (
+                                    <span className="flex items-center gap-1 text-green-400 font-medium">
+                                        <DollarSign className="w-3 h-3" />
+                                        <span className="font-mono">€{popupData.nodeData.cost.toLocaleString()}</span>
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="p-4 max-h-40 overflow-y-auto">
+                            {popupData.nodeData.description ? (
+                                <p className="text-sm text-zinc-300 whitespace-pre-wrap">{popupData.nodeData.description}</p>
+                            ) : (
+                                <p className="text-sm text-zinc-600 italic">No description provided</p>
+                            )}
+                        </div>
+
+                        {/* Linked Blog Post */}
+                        {popupData.post && (
+                            <div className="p-4 pt-0">
+                                <Link
+                                    href={`/${locale}/posts/${popupData.post.id}?from=history`}
+                                    className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-orange-500/50 transition-colors"
+                                >
+                                    {popupData.post.thumbnail && (
+                                        <img src={popupData.post.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-orange-400 font-medium">Linked Blog Post</p>
+                                        <p className="text-white text-sm font-medium truncate">{popupData.post.title}</p>
+                                    </div>
+                                    <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
+                                </Link>
+                            </div>
+                        )}
+
+                        {/* Arrow Pointer */}
+                        <div
+                            className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-900 border-b border-r border-zinc-700 transform rotate-45"
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

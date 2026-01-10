@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-rajdhani), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -144,4 +145,105 @@ body {
     linear-gradient(to right, rgba(63, 63, 70, 0.1) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(63, 63, 70, 0.1) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+/* Remove React Flow node selection styling */
+.react-flow__node.selected,
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Racing font for headings */
+.font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+/* Dashboard Light Animations */
+@keyframes dashboard-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes dashboard-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 12px currentColor);
+  }
+}
+
+@keyframes dashboard-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 3px currentColor);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+}
+
+.animate-dashboard-blink {
+  animation: dashboard-blink 1s ease-in-out infinite;
+}
+
+.animate-dashboard-glow {
+  animation: dashboard-glow 2s ease-in-out infinite;
+}
+
+.animate-dashboard-pulse {
+  animation: dashboard-pulse 1.5s ease-in-out infinite;
+}
+
+/* Dashboard icon colors */
+.dashboard-light-off {
+  color: #3f3f46;
+  --icon-stroke: #27272a;
+}
+
+.dashboard-light-amber {
+  color: #f59e0b;
+  --icon-stroke: #78350f;
+}
+
+.dashboard-light-red {
+  color: #ef4444;
+  --icon-stroke: #7f1d1d;
+}
+
+.dashboard-light-green {
+  color: #22c55e;
+  --icon-stroke: #14532d;
+}
+
+.dashboard-light-blue {
+  color: #3b82f6;
+  --icon-stroke: #1e3a8a;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-dashboard-blink,
+  .animate-dashboard-glow,
+  .animate-dashboard-pulse {
+    animation: none;
+  }
+}
+
+/* Animation disabled class (controlled by settings) */
+.animations-disabled .animate-dashboard-blink,
+.animations-disabled .animate-dashboard-glow,
+.animations-disabled .animate-dashboard-pulse,
+.animations-disabled .animate-pulse,
+.animations-disabled .animate-spin,
+.animations-disabled .animate-bounce {
+  animation: none;
 }

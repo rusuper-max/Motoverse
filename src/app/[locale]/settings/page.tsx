@@ -21,10 +21,12 @@ import {
   Car,
   X,
   Settings,
-  Gauge
+  Gauge,
+  Sparkles
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
+import { useAnimations } from '@/contexts/AnimationContext'
 
 const ACCOUNT_TYPES = [
   { value: 'enthusiast', label: 'Enthusiast', description: 'Car lover and community member' },
@@ -117,6 +119,9 @@ export default function SettingsPage() {
   const [passwordChanging, setPasswordChanging] = useState(false)
 
   const supabase = createClient()
+
+  // Animation settings
+  const { settings: animationSettings, updateSetting: updateAnimationSetting, toggleAll: toggleAllAnimations } = useAnimations()
 
   // Fetch user data
   const fetchUserData = useCallback(async () => {
@@ -885,6 +890,76 @@ export default function SettingsPage() {
                   </div>
                 </section>
 
+                {/* Animation Settings Section */}
+                <section className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-zinc-800">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <Sparkles className="w-5 h-5" />
+                      Animations
+                    </h2>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {/* Master Toggle */}
+                    <div className="pb-4 border-b border-zinc-800">
+                      <AnimationToggle
+                        label="Enable all animations"
+                        description="Master toggle for all animations throughout the app"
+                        checked={animationSettings.animationsEnabled}
+                        onChange={(enabled) => toggleAllAnimations(enabled)}
+                      />
+                      <p className="text-xs text-zinc-500 mt-2">
+                        Note: Animations are automatically disabled when your system prefers reduced motion.
+                      </p>
+                    </div>
+
+                    {/* Individual Toggles */}
+                    <div className="space-y-4">
+                      <p className="text-sm font-medium text-zinc-300">Fine-tune specific animations</p>
+
+                      <AnimationToggle
+                        label="Notification animations"
+                        description="Dashboard light effects on notification icons"
+                        checked={animationSettings.notificationAnimations}
+                        onChange={(enabled) => updateAnimationSetting('notificationAnimations', enabled)}
+                        disabled={!animationSettings.animationsEnabled}
+                      />
+
+                      <AnimationToggle
+                        label="Feed animations"
+                        description="Entry animations for feed posts"
+                        checked={animationSettings.feedAnimations}
+                        onChange={(enabled) => updateAnimationSetting('feedAnimations', enabled)}
+                        disabled={!animationSettings.animationsEnabled}
+                      />
+
+                      <AnimationToggle
+                        label="Page transitions"
+                        description="Smooth transitions when navigating pages"
+                        checked={animationSettings.pageTransitions}
+                        onChange={(enabled) => updateAnimationSetting('pageTransitions', enabled)}
+                        disabled={!animationSettings.animationsEnabled}
+                      />
+
+                      <AnimationToggle
+                        label="Hover effects"
+                        description="Interactive effects when hovering over elements"
+                        checked={animationSettings.hoverEffects}
+                        onChange={(enabled) => updateAnimationSetting('hoverEffects', enabled)}
+                        disabled={!animationSettings.animationsEnabled}
+                      />
+
+                      <AnimationToggle
+                        label="Loading animations"
+                        description="Spinning loaders and skeleton screens"
+                        checked={animationSettings.loadingAnimations}
+                        onChange={(enabled) => updateAnimationSetting('loadingAnimations', enabled)}
+                        disabled={!animationSettings.animationsEnabled}
+                      />
+                    </div>
+                  </div>
+                </section>
+
                 {/* Save Button */}
                 <div className="flex justify-end">
                   <button
@@ -1186,6 +1261,43 @@ function ToggleSetting({
         <span
           className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
             enabled ? 'left-6' : 'left-1'
+          }`}
+        />
+      </button>
+    </div>
+  )
+}
+
+// Animation Toggle Component (controlled)
+function AnimationToggle({
+  label,
+  description,
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (enabled: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className={`flex items-center justify-between py-2 ${disabled ? 'opacity-50' : ''}`}>
+      <div>
+        <p className="text-white font-medium">{label}</p>
+        <p className="text-sm text-zinc-400">{description}</p>
+      </div>
+      <button
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
+        className={`relative w-12 h-7 rounded-full transition-colors ${
+          checked ? 'bg-orange-500' : 'bg-zinc-700'
+        } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <span
+          className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
+            checked ? 'left-6' : 'left-1'
           }`}
         />
       </button>

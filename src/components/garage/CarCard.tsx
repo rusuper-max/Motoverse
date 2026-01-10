@@ -58,18 +58,18 @@ export default function CarCard({ car, isOwner = false }: CarCardProps) {
         <div className="mt-3 flex flex-wrap gap-3 text-sm text-zinc-400">
           <div className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4" />
-            <span>{car.year}</span>
+            <span className="font-mono">{car.year}</span>
           </div>
           {car.mileage && (
             <div className="flex items-center gap-1.5">
               <Gauge className="w-4 h-4" />
-              <span>{car.mileage.toLocaleString()} km</span>
+              <span className="font-mono">{car.mileage.toLocaleString()} km</span>
             </div>
           )}
           {car.horsepower && (
             <div className="flex items-center gap-1.5">
               <Settings className="w-4 h-4" />
-              <span>{car.horsepower} hp</span>
+              <span className="font-mono">{car.horsepower} hp</span>
             </div>
           )}
         </div>
